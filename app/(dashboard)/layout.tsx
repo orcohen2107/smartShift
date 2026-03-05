@@ -26,14 +26,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500">
-        Loading dashboard...
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+        טוען...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
     </div>

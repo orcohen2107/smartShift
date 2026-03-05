@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { requireManager } from "@/lib/auth/requireManager";
-import type { Shift } from "@/lib/utils/interfaces";
+import type { Shift, ShiftPostBody } from "@/lib/utils/interfaces";
 import type { ShiftType } from "@/lib/utils/enums";
 
 export async function GET(req: Request) {
@@ -32,12 +32,6 @@ export async function GET(req: Request) {
   return NextResponse.json({ shifts: (data ?? []) as Shift[] });
 }
 
-type PostBody = {
-  date: string;
-  type: ShiftType;
-  required_count: number;
-};
-
 export async function POST(req: Request) {
   const res = await requireManager(req);
   if (!res.ok) {
@@ -45,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   const { supabase, profile } = res;
-  const body = (await req.json()) as PostBody;
+  const body = (await req.json()) as ShiftPostBody;
 
   if (!body.date || !body.type || !body.required_count) {
     return NextResponse.json(

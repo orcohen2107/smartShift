@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
-
-type Body = {
-  email: string;
-  password: string;
-};
+import type { SignupBody } from "@/lib/utils/interfaces";
 
 export async function POST(req: Request) {
-  const { email, password } = (await req.json()) as Body;
+  const { email, password, full_name } = (await req.json()) as SignupBody;
 
   if (!email || !password) {
     return NextResponse.json(
@@ -21,6 +17,9 @@ export async function POST(req: Request) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      data: full_name ? { full_name: full_name.trim() } : undefined,
+    },
   });
 
   if (error) {

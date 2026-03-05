@@ -18,6 +18,8 @@ export async function POST(req: Request) {
 
   const userId = userData.user.id;
   const email = userData.user.email ?? "";
+  const fullName =
+    (userData.user.user_metadata?.full_name as string)?.trim() || email;
 
   // Check if profile already exists.
   const { data: existingProfile, error: profileError } = await supabase
@@ -49,7 +51,8 @@ export async function POST(req: Request) {
     .from("profiles")
     .insert({
       id: userId,
-      full_name: email,
+      full_name: fullName,
+      email: email || null,
       role,
     })
     .select("*")

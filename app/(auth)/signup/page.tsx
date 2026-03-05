@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, full_name: fullName || undefined }),
       });
 
       const data = await res.json();
@@ -49,73 +50,131 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-      <div className="w-full max-w-md rounded-lg border bg-white px-6 py-8 shadow-sm">
-        <h1 className="mb-2 text-center text-xl font-semibold text-zinc-900">
-          smartshift
-        </h1>
-        <p className="mb-6 text-center text-sm text-zinc-600">
-          Create a new account.
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-4 py-8 flex items-center justify-center">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/70 shadow-2xl backdrop-blur-xl">
+        <div className="pointer-events-none absolute -left-32 top-[-80px] hidden h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/40 via-sky-400/30 to-violet-500/30 blur-3xl md:block" />
+        <div className="relative flex flex-col md:flex-row-reverse">
+          {/* טור טופס הרשמה */}
+          <div className="w-full p-8 md:w-1/2 md:p-10 lg:p-12">
+            <div className="mb-8">
+              <h1 className="mb-2 text-2xl font-semibold text-zinc-50 lg:text-3xl">
+                יצירת משתמש חדש
+              </h1>
+              <p className="text-sm text-zinc-400">
+                פתח חשבון כדי להתחיל לנהל אילוצים ושיבוצים עבור הצוות שלך.
+              </p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-700">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none ring-zinc-900/5 focus:ring-2"
-              placeholder="you@example.com"
-            />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  שם מלא
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  placeholder="השם המלא שלך"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  אימייל
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  סיסמה
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-400" role="alert">
+                  {error}
+                </p>
+              )}
+              {info && !error && (
+                <p className="text-sm text-emerald-300" role="status">
+                  {info}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-4 flex w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {loading ? "יוצר משתמש..." : "הרשמה"}
+              </button>
+            </form>
+
+            <p className="mt-4 text-center text-xs text-zinc-400">
+              כבר יש לך משתמש?{" "}
+              <a
+                href="/login"
+                className="font-medium text-emerald-300 hover:text-emerald-200"
+              >
+                להתחברות
+              </a>
+            </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-700">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none ring-zinc-900/5 focus:ring-2"
-              placeholder="••••••••"
-            />
+          {/* טור צד ויזואלי / טקסטואלי */}
+          <div className="hidden w-1/2 flex-col justify-between border-l border-zinc-800/70 bg-gradient-to-br from-zinc-900/80 via-zinc-900/40 to-black/60 p-8 md:flex lg:p-10">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+                התחלה מהירה לצוותים
+              </p>
+              <h2 className="mt-3 text-xl font-semibold text-zinc-50 lg:text-2xl">
+                הגדרה מהירה של צוות המשמרות
+              </h2>
+              <p className="mt-3 text-sm text-zinc-400">
+                המשתמש הראשון שיירשם יסומן אוטומטית כמנהל ויוכל לנהל שיבוצים,
+                אילוצים ומשמרות לכל הצוות.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-2 text-xs text-zinc-300">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  1
+                </span>
+                <span>יוצרים משתמש חדש למנהל הראשון.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  2
+                </span>
+                <span>מזמינים עובדים נוספים להירשם ולהצטרף לצוות.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  3
+                </span>
+                <span>מתחילים להזין אילוצים ולבנות שיבוצים חכמים.</span>
+              </div>
+            </div>
           </div>
-
-          {error && (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-          {info && !error && (
-            <p className="text-sm text-emerald-700" role="status">
-              {info}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-50 hover:bg-zinc-800 disabled:opacity-60"
-          >
-            {loading ? "Creating account..." : "Sign up"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-xs text-zinc-500">
-          Already have an account?{" "}
-          <a
-            href="/login"
-            className="font-medium text-zinc-800 underline underline-offset-4"
-          >
-            Sign in
-          </a>
-        </p>
+        </div>
       </div>
     </div>
   );

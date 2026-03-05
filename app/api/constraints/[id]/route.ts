@@ -1,22 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
-import type { Constraint } from "@/lib/utils/interfaces";
-import type { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
+import type { Constraint, ConstraintPatchBody, RouteParamsId } from "@/lib/utils/interfaces";
 
-type Params = {
-  params: {
-    id: string;
-  };
-};
-
-type PatchBody = {
-  date?: string;
-  type?: ShiftType;
-  status?: ConstraintStatus;
-  note?: string | null;
-};
-
-export async function PATCH(req: Request, { params }: Params) {
+export async function PATCH(req: Request, { params }: RouteParamsId) {
   const res = await requireUser(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
@@ -39,7 +25,7 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = (await req.json()) as PatchBody;
+  const body = (await req.json()) as ConstraintPatchBody;
 
   const update: Record<string, unknown> = {};
   if (body.date !== undefined) update.date = body.date;
@@ -64,7 +50,7 @@ export async function PATCH(req: Request, { params }: Params) {
   return NextResponse.json(data as Constraint);
 }
 
-export async function DELETE(req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: RouteParamsId) {
   const res = await requireUser(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });

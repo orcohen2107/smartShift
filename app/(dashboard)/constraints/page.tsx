@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
 import type { Constraint } from "@/lib/utils/interfaces";
 import { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
@@ -16,10 +16,33 @@ type ConstraintsResponse = {
   constraints: Constraint[];
 };
 
+function getCurrentWeekRange() {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday
+  const start = new Date(today);
+  start.setDate(today.getDate() - dayOfWeek);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  const toInputDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate(),
+    ).padStart(2, "0")}`;
+
+  return {
+    from: toInputDate(start),
+    to: toInputDate(end),
+  };
+}
+
 export default function ConstraintsPage() {
   const [items, setItems] = useState<Constraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const defaultRange = useMemo(() => getCurrentWeekRange(), []);
+  const [fromDate, setFromDate] = useState<string>(defaultRange.from);
+  const [toDate, setToDate] = useState<string>(defaultRange.to);
 
   const [form, setForm] = useState<ConstraintInput>({
     date: "",
@@ -45,6 +68,16 @@ export default function ConstraintsPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  const filteredItems = useMemo(
+    () =>
+      items.filter((c) => {
+        if (fromDate && c.date < fromDate) return false;
+        if (toDate && c.date > toDate) return false;
+        return true;
+      }),
+    [items, fromDate, toDate],
+  );
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -75,24 +108,28 @@ export default function ConstraintsPage() {
     }
   }
 
+  const inputClass =
+    "w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50";
+  const labelClass = "block text-xs font-medium text-zinc-700 dark:text-zinc-300";
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-zinc-900">Constraints</h1>
-        <p className="text-sm text-zinc-600">
-          Declare when you are unavailable for day or night shifts.
+        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          אילוצים
+        </h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          סימון ימים בהם אינך זמין למשמרות יום או לילה.
         </p>
       </div>
 
       <form
         onSubmit={handleCreate}
-        className="space-y-4 rounded-lg border bg-white p-4"
+        className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
         <div className="grid gap-3 md:grid-cols-4">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Date
-            </label>
+            <label className={labelClass}>תאריך</label>
             <input
               type="date"
               required
@@ -100,13 +137,11 @@ export default function ConstraintsPage() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, date: e.target.value }))
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
+              className={inputClass}
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Type
-            </label>
+            <label className={labelClass}>סוג משמרת</label>
             <select
               value={form.type}
               onChange={(e) =>
@@ -115,81 +150,128 @@ export default function ConstraintsPage() {
                   type: e.target.value as ShiftType,
                 }))
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
+              className={inputClass}
             >
-              <option value="day">Day</option>
-              <option value="night">Night</option>
+              <option value="day">משמרת יום</option>
+              <option value="night">משמרת לילה</option>
             </select>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Status
-            </label>
-            <input
-              value="unavailable"
-              disabled
-              className="w-full cursor-not-allowed rounded-md border bg-zinc-50 px-2 py-1.5 text-sm text-zinc-600"
-            />
+            <label className={labelClass}>סטטוס</label>
+            <select
+              value={form.status}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  status: e.target.value as ConstraintStatus,
+                }))
+              }
+              className={inputClass}
+            >
+              <option value={ConstraintStatus.Unavailable}>לא זמין</option>
+              <option value={ConstraintStatus.Partial}>פנוי לכמה שעות</option>
+            </select>
           </div>
           <div className="space-y-1 md:col-span-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Note (optional)
-            </label>
+            <label className={labelClass}>הערה (אופציונלי)</label>
             <input
               type="text"
               value={form.note ?? ""}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, note: e.target.value }))
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
-              placeholder="Short note..."
+              className={inputClass}
+              placeholder="הערה קצרה..."
             />
           </div>
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 hover:bg-zinc-800"
+            className="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400"
           >
-            Add constraint
+            הוספת אילוץ
           </button>
         </div>
       </form>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-800">My constraints</h2>
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+            אילוצים (ברירת מחדל: השבוע הנוכחי)
+          </h2>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <div className="space-y-1">
+              <label className={labelClass}>מתאריך</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>עד תאריך</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
         {loading ? (
-          <p className="text-sm text-zinc-500">Loading...</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            You have no constraints yet.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            טוען אילוצים...
+          </p>
+        ) : filteredItems.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            אין אילוצים לתאריכים שנבחרו.
           </p>
         ) : (
-          <ul className="divide-y rounded-lg border bg-white">
-            {items.map((c) => (
+          <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/80">
+            {filteredItems.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center justify-between px-4 py-2.5 text-sm"
+                className="flex items-center justify-between px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100"
               >
                 <div className="space-y-0.5">
                   <div className="font-medium">
-                    {c.date} · {c.type === "day" ? "Day" : "Night"}
+                    {c.date} · {c.type === "day" ? "משמרת יום" : "משמרת לילה"}
                   </div>
-                  {c.note && (
-                    <div className="text-xs text-zinc-600">{c.note}</div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        c.status === ConstraintStatus.Unavailable
+                          ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
+                          : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100"
+                      }`}
+                    >
+                      {c.status === ConstraintStatus.Unavailable
+                        ? "לא זמין"
+                        : "פנוי לכמה שעות"}
+                    </span>
+                    {c.note && (
+                      <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                        {c.note}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDelete(c.id)}
-                  className="text-xs font-medium text-red-600 hover:text-red-700"
+                  className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
                 >
-                  Delete
+                  מחיקה
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
       </section>
     </div>
   );

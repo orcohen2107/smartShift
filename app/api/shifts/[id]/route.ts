@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth/requireManager";
-import type { Shift } from "@/lib/utils/interfaces";
-import type { ShiftType } from "@/lib/utils/enums";
+import type { Shift, ShiftPatchBody, RouteParamsId } from "@/lib/utils/interfaces";
 
-type Params = {
-  params: {
-    id: string;
-  };
-};
-
-type PatchBody = {
-  date?: string;
-  type?: ShiftType;
-  required_count?: number;
-};
-
-export async function PATCH(req: Request, { params }: Params) {
+export async function PATCH(req: Request, { params }: RouteParamsId) {
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
@@ -23,7 +10,7 @@ export async function PATCH(req: Request, { params }: Params) {
 
   const { supabase } = res;
   const id = params.id;
-  const body = (await req.json()) as PatchBody;
+  const body = (await req.json()) as ShiftPatchBody;
 
   const update: Record<string, unknown> = {};
   if (body.date !== undefined) update.date = body.date;
@@ -49,7 +36,7 @@ export async function PATCH(req: Request, { params }: Params) {
   return NextResponse.json(data as Shift);
 }
 
-export async function DELETE(req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: RouteParamsId) {
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });

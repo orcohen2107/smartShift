@@ -4,6 +4,8 @@ import { requireManager } from "@/lib/auth/requireManager";
 import type {
   Assignment,
   AssignmentsOverview,
+  AssignmentDeleteBody,
+  AssignmentPostBody,
   Constraint,
   Profile,
   Shift,
@@ -115,11 +117,6 @@ export async function GET(req: Request) {
   return NextResponse.json(payload);
 }
 
-type PostBody = {
-  shift_id: string;
-  worker_id: string;
-};
-
 export async function POST(req: Request) {
   const res = await requireManager(req);
   if (!res.ok) {
@@ -127,7 +124,7 @@ export async function POST(req: Request) {
   }
 
   const { supabase } = res;
-  const body = (await req.json()) as PostBody;
+  const body = (await req.json()) as AssignmentPostBody;
 
   if (!body.shift_id || !body.worker_id) {
     return NextResponse.json(
@@ -155,10 +152,6 @@ export async function POST(req: Request) {
   return NextResponse.json(data as Assignment, { status: 201 });
 }
 
-type DeleteBody = {
-  assignment_id: string;
-};
-
 export async function DELETE(req: Request) {
   const res = await requireManager(req);
   if (!res.ok) {
@@ -166,7 +159,7 @@ export async function DELETE(req: Request) {
   }
 
   const { supabase } = res;
-  const body = (await req.json()) as DeleteBody;
+  const body = (await req.json()) as AssignmentDeleteBody;
 
   if (!body.assignment_id) {
     return NextResponse.json(

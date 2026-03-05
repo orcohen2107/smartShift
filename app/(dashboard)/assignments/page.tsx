@@ -8,12 +8,11 @@ import type {
   Profile,
   Shift,
 } from "@/lib/utils/interfaces";
-import { ShiftType } from "@/lib/utils/enums";
+import { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
 
 type CreateShiftInput = {
   date: string;
   type: ShiftType;
-  required_count: number;
 };
 
 type AssignmentsGetResponse = AssignmentsOverview;
@@ -27,8 +26,8 @@ export default function AssignmentsPage() {
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
     date: "",
     type: ShiftType.Day,
-    required_count: 1,
   });
+  const [initialWorkerId, setInitialWorkerId] = useState<string>("");
 
   async function load() {
     setError(null);
@@ -84,21 +83,33 @@ export default function AssignmentsPage() {
     shiftType: ShiftType,
   ) {
     const key = `${workerId}-${date}-${shiftType}`;
-    return (constraintsByWorkerDateType[key] ?? []).length > 0;
+    return (constraintsByWorkerDateType[key] ?? []).some(
+      (c) => c.status === ConstraintStatus.Unavailable,
+    );
   }
 
   async function handleCreateShift(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      await apiFetch<Shift>("/api/shifts", {
+      const createdShift = await apiFetch<Shift>("/api/shifts", {
         method: "POST",
-        json: createShiftForm,
+        json: {
+          date: createShiftForm.date,
+          type: createShiftForm.type,
+          // כרגע לא משתמשים בכמות נדרשת בבחירה, שולחים 1 כברירת מחדל
+          required_count: 1,
+        },
       });
-      setCreateShiftForm((prev) => ({
-        ...prev,
-        required_count: 1,
-      }));
+
+      if (initialWorkerId) {
+        await apiFetch("/api/assignments", {
+          method: "POST",
+          json: { shift_id: createdShift.id, worker_id: initialWorkerId },
+        });
+        setInitialWorkerId("");
+      }
+
       await load();
     } catch (err: any) {
       console.error(err);
@@ -138,23 +149,25 @@ export default function AssignmentsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-900">Assignments</h1>
-          <p className="text-sm text-zinc-600">
-            Manage shifts and assign workers. Manager-only for changes.
+          <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            שיבוצים
+          </h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            ניהול משמרות ושיבוץ עובדים (שינויים — מנהל בלבד).
           </p>
         </div>
-        <div className="inline-flex rounded-md border bg-white p-0.5 text-xs font-medium">
+        <div className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 p-0.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-900/80">
           {(["day", "night"] as ShiftType[]).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`rounded px-3 py-1 ${
+              className={`rounded-full px-3 py-1 ${
                 type === t
-                  ? "bg-zinc-900 text-zinc-50"
-                  : "text-zinc-700 hover:bg-zinc-100"
+                  ? "bg-emerald-500 text-emerald-950 shadow-sm"
+                  : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
               }`}
             >
-              {t === "day" ? "Day" : "Night"}
+              {t === "day" ? "יום" : "לילה"}
             </button>
           ))}
         </div>
@@ -162,13 +175,15 @@ export default function AssignmentsPage() {
 
       <form
         onSubmit={handleCreateShift}
-        className="space-y-3 rounded-lg border bg-white p-4"
+        className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
-        <h2 className="text-sm font-semibold text-zinc-800">Create shift</h2>
+        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          יצירת משמרת
+        </h2>
         <div className="grid gap-3 md:grid-cols-4">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Date
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+              תאריך
             </label>
             <input
               type="date"
@@ -180,12 +195,12 @@ export default function AssignmentsPage() {
                   date: e.target.value,
                 }))
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Type
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+              סוג משמרת
             </label>
             <select
               value={createShiftForm.type}
@@ -195,53 +210,52 @@ export default function AssignmentsPage() {
                   type: e.target.value as ShiftType,
                 }))
               }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             >
-              <option value="day">Day</option>
-              <option value="night">Night</option>
+              <option value="day">משמרת יום</option>
+              <option value="night">משמרת לילה</option>
             </select>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700">
-              Required count
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+              שיבוץ ראשוני (אופציונלי)
             </label>
-            <input
-              type="number"
-              min={1}
-              value={createShiftForm.required_count}
-              onChange={(e) =>
-                setCreateShiftForm((prev) => ({
-                  ...prev,
-                  required_count: Number(e.target.value || 1),
-                }))
-              }
-              className="w-full rounded-md border px-2 py-1.5 text-sm"
-            />
+            <select
+              value={initialWorkerId}
+              onChange={(e) => setInitialWorkerId(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+            >
+              <option value="">ללא שיבוץ התחלתי</option>
+              {overview?.workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.full_name ?? w.email ?? w.id}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <p className="text-xs text-zinc-500">
-          Only managers can create or modify shifts. Other users can still view
-          the schedule.
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          רק מנהלים יכולים ליצור או לערוך משמרות. עובדים יכולים לצפות בשיבוצים.
         </p>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 hover:bg-zinc-800"
+            className="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400"
           >
-            Create shift
+            יצירת משמרת
           </button>
         </div>
       </form>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-800">
-          Shifts ({type === "day" ? "Day" : "Night"})
+        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          משמרות ({type === "day" ? "יום" : "לילה"})
         </h2>
         {loading ? (
-          <p className="text-sm text-zinc-500">Loading...</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">טוען...</p>
         ) : shiftsOfType.length === 0 ? (
-          <p className="text-sm text-zinc-500">
-            No shifts defined yet for this type.
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            אין משמרות מוגדרות עבור סוג משמרת זה.
           </p>
         ) : (
           <div className="space-y-3">
@@ -250,29 +264,28 @@ export default function AssignmentsPage() {
               return (
                 <div
                   key={shift.id}
-                  className="space-y-2 rounded-lg border bg-white p-4"
+                  className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-medium text-zinc-900">
+                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                         {shift.date} ·{" "}
-                        {shift.type === "day" ? "Day" : "Night"} · requires{" "}
-                        {shift.required_count}
+                        {shift.type === "day" ? "יום" : "לילה"}
                       </div>
-                      <div className="text-xs text-zinc-500">
-                        {shiftAssignments.length}/{shift.required_count} assigned
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {shiftAssignments.length} עובדים שובצו למשמרת זו
                       </div>
                     </div>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-zinc-700">
-                        Assigned
+                      <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                        שובצו למשמרת
                       </div>
                       {shiftAssignments.length === 0 ? (
-                        <p className="text-xs text-zinc-500">
-                          No workers assigned yet.
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          עדיין אין עובדים שובצו למשמרת זו.
                         </p>
                       ) : (
                         <ul className="space-y-1 text-xs">
@@ -287,23 +300,23 @@ export default function AssignmentsPage() {
                             return (
                               <li
                                 key={a.id}
-                                className="flex items-center justify-between rounded-md bg-zinc-50 px-2 py-1"
+                                className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium">
-                                    {worker?.full_name ?? "Worker"}
+                                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                    {worker?.full_name ?? "עובד"}
                                   </span>
                                   {unavailable && (
-                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                                      Unavailable
+                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                      לא זמין
                                     </span>
                                   )}
                                 </div>
                                 <button
                                   onClick={() => handleUnassign(a.id)}
-                                  className="text-[11px] font-medium text-red-600 hover:text-red-700"
+                                  className="text-[11px] font-medium text-red-600 hover:text-red-700 dark:text-red-400"
                                 >
-                                  Remove
+                                  הסרה
                                 </button>
                               </li>
                             );
@@ -313,8 +326,8 @@ export default function AssignmentsPage() {
                     </div>
 
                     <div className="space-y-1">
-                      <div className="text-xs font-semibold text-zinc-700">
-                        Assign worker
+                      <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                        שיבוץ עובד נוסף
                       </div>
                       <select
                         onChange={(e) => {
@@ -323,10 +336,10 @@ export default function AssignmentsPage() {
                           void handleAssign(shift, workerId);
                           e.target.value = "";
                         }}
-                        className="w-full rounded-md border px-2 py-1.5 text-xs"
+                        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
                         defaultValue=""
                       >
-                        <option value="">Select worker…</option>
+                        <option value="">בחירת עובד…</option>
                         {overview?.workers.map((w) => {
                           const unavailable = hasUnavailableConstraint(
                             w.id,
@@ -336,15 +349,14 @@ export default function AssignmentsPage() {
                           return (
                             <option key={w.id} value={w.id}>
                               {w.full_name ?? w.id}
-                              {unavailable ? " (unavailable)" : ""}
+                              {unavailable ? " (לא זמין)" : ""}
                             </option>
                           );
                         })}
                       </select>
-                      <p className="text-[11px] text-zinc-500">
-                        Warnings are shown when a worker is marked as
-                        unavailable for this date and shift. Assignments are not
-                        blocked in the MVP.
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        אם עובד מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן
+                        אזהרה, אך לא תהיה חסימה של השיבוץ.
                       </p>
                     </div>
                   </div>
@@ -353,7 +365,9 @@ export default function AssignmentsPage() {
             })}
           </div>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
       </section>
     </div>
   );
