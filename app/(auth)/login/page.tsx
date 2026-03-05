@@ -1,0 +1,175 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
+import { apiFetch } from "@/lib/api/apiFetch";
+
+type EnsureProfileResponse = {
+  profile: {
+    id: string;
+    full_name: string | null;
+    role: string;
+  };
+};
+
+export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered") === "1";
+  const confirmEmail = searchParams.get("confirm") === "1";
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const supabase = getSupabaseBrowser();
+      const { error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      // Ensure profile exists and has a role.
+      await apiFetch<EnsureProfileResponse>("/api/profile/ensure", {
+        method: "POST",
+      });
+
+      router.replace("/dashboard");
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      console.error(err);
+      setError(err.message ?? "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-4 py-8 flex items-center justify-center">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/70 shadow-2xl backdrop-blur-xl">
+        <div className="pointer-events-none absolute -left-32 top-[-80px] hidden h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/40 via-sky-400/30 to-violet-500/30 blur-3xl md:block" />
+        <div className="relative flex flex-col md:flex-row-reverse">
+          {/* טור טופס התחברות */}
+          <div className="w-full p-8 md:w-1/2 md:p-10 lg:p-12">
+            <div className="mb-8">
+              <h1 className="mb-2 text-2xl font-semibold text-zinc-50 lg:text-3xl">
+                ברוך הבא ל‑SmartShift
+              </h1>
+              <p className="text-sm text-zinc-400">
+                התחבר כדי לעדכן אילוצים ולצפות בשיבוצים שלך.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  אימייל
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  סיסמה
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {registered && !error && (
+                <p className="text-sm text-emerald-300" role="status">
+                  {confirmEmail
+                    ? "ההרשמה הושלמה. נא לאשר את המייל ואז להתחבר."
+                    : "ההרשמה הושלמה. כעת תוכל להתחבר."}
+                </p>
+              )}
+              {error && (
+                <p className="text-sm text-red-400" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-4 flex w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {loading ? "מתחבר..." : "התחברות"}
+              </button>
+            </form>
+
+            <p className="mt-4 text-center text-xs text-zinc-400">
+              עדיין אין לך משתמש?{" "}
+              <a
+                href="/signup"
+                className="font-medium text-emerald-300 hover:text-emerald-200"
+              >
+                להרשמה
+              </a>
+            </p>
+          </div>
+
+          {/* טור צד ויזואלי / טקסטואלי */}
+          <div className="hidden w-1/2 flex-col justify-between border-l border-zinc-800/70 bg-gradient-to-br from-zinc-900/80 via-zinc-900/40 to-black/60 p-8 md:flex lg:p-10">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+                מערכת משמרות חכמה
+              </p>
+              <h2 className="mt-3 text-xl font-semibold text-zinc-50 lg:text-2xl">
+                ראות מלאה על הצוות והאילוצים
+              </h2>
+              <p className="mt-3 text-sm text-zinc-400">
+                ניהול קל של אילוצים, שיבוצים ומשמרות – במקום אחד פשוט, שנבנה
+                מראש לעבודה חכמה עם AI.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-2 text-xs text-zinc-300">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  1
+                </span>
+                <span>סימון אילוצים אישיים לפי תאריך ומשמרת.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  2
+                </span>
+                <span>תמונה מלאה למנהל על הזמינות של הצוות.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                  3
+                </span>
+                <span>בהמשך: הצעות שיבוץ אוטומטיות בעזרת AI.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
