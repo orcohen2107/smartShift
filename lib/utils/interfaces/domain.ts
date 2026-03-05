@@ -2,11 +2,18 @@ import { Role } from "../enums/role";
 import { ShiftType } from "../enums/shiftType";
 import { ConstraintStatus } from "../enums/constraintStatus";
 
+export interface System {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;
   email: string | null;
   role: Role;
+  system_id: string | null;
   created_at: string;
 }
 
@@ -16,6 +23,7 @@ export interface Worker {
   full_name: string | null;
   email: string | null;
   user_id: string | null;
+  system_id: string | null;
   created_at: string;
 }
 
@@ -45,6 +53,8 @@ export interface Constraint {
   status: ConstraintStatus;
   note: string | null;
   created_at: string;
+  /** שם בעל האילוץ – מגיע מה-API כשמנהל צופה באילוצים של כולם */
+  worker_name?: string | null;
 }
 
 export interface Assignment {

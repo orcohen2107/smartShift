@@ -2,29 +2,21 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
-import { apiFetch } from "@/lib/api/apiFetch";
 import { useTheme } from "@/components/ThemeProvider";
-import type { Profile } from "@/lib/utils/interfaces";
+import { useProfile } from "@/contexts/ProfileContext";
+import { Role } from "@/lib/utils/enums";
 
-const links = [
+const baseLinks = [
   { href: "/dashboard", label: "דשבורד" },
   { href: "/constraints", label: "אילוצים" },
-  { href: "/assignments", label: "שיבוצים" },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const [profile, setProfile] = useState<Profile | null>(null);
-
-  useEffect(() => {
-    apiFetch<{ profile: Profile }>("/api/profile/me")
-      .then((data) => setProfile(data.profile))
-      .catch(() => setProfile(null));
-  }, []);
+  const profile = useProfile();
 
   async function handleLogout() {
     const supabase = getSupabaseBrowser();
@@ -43,7 +35,7 @@ export function Navbar() {
             SmartShift
           </span>
           <nav className="flex items-center gap-2 text-sm">
-            {links.map((link) => {
+            {baseLinks.map((link) => {
               const active = pathname === link.href;
               return (
                 <Link
@@ -59,6 +51,30 @@ export function Navbar() {
                 </Link>
               );
             })}
+            {profile?.role === Role.Manager && (
+              <>
+                <Link
+                  href="/assignments"
+                  className={`rounded-md px-3 py-1.5 transition ${
+                    pathname === "/assignments"
+                      ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950"
+                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  שיבוצים
+                </Link>
+                <Link
+                    href="/settings"
+                  className={`cursor-pointer rounded-md px-3 py-1.5 transition ${
+                    pathname === "/settings"
+                      ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950"
+                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  הגדרות
+                </Link>
+              </>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">

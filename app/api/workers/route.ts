@@ -8,11 +8,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase } = res;
-  const { data, error } = await supabase
+  const { supabase, profile } = res;
+  let query = supabase
     .from("workers")
     .select("*")
     .order("full_name", { ascending: true });
+  if (profile.system_id) {
+    query = query.eq("system_id", profile.system_id);
+  }
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -27,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase } = res;
+  const { supabase, profile } = res;
   const body = (await req.json()) as WorkerPostBody;
   const fullName = body.full_name?.trim();
   if (!fullName) {
@@ -39,7 +43,12 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabase
     .from("workers")
-    .insert({ full_name: fullName, email: null, user_id: null })
+    .insert({
+      full_name: fullName,
+      email: null,
+      user_id: null,
+      system_id: profile.system_id ?? null,
+    })
     .select("*")
     .single();
 

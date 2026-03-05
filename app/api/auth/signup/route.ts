@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
 import type { SignupBody } from "@/lib/utils/interfaces";
 
 export async function POST(req: Request) {
-  const { email, password, full_name } = (await req.json()) as SignupBody;
+  const { email, password, full_name, system_id } = (await req.json()) as SignupBody;
 
   if (!email || !password) {
     return NextResponse.json(
@@ -13,12 +13,15 @@ export async function POST(req: Request) {
   }
 
   const supabase = getSupabaseAdmin();
+  const metadata: Record<string, unknown> = {};
+  if (full_name) metadata.full_name = full_name.trim();
+  if (system_id) metadata.system_id = system_id;
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: full_name ? { full_name: full_name.trim() } : undefined,
+      data: Object.keys(metadata).length ? metadata : undefined,
     },
   });
 

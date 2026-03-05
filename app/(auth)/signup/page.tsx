@@ -1,16 +1,33 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { System } from "@/lib/utils/interfaces";
 
 export default function SignupPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [systemId, setSystemId] = useState<string>("");
+  const [systems, setSystems] = useState<System[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/systems")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.systems ?? [];
+        setSystems(list);
+        if (list.length > 0 && !systemId) {
+          setSystemId(list[0]!.id);
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch systems once on mount, set default
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,7 +38,12 @@ export default function SignupPage() {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, full_name: fullName || undefined }),
+        body: JSON.stringify({
+          email,
+          password,
+          full_name: fullName || undefined,
+          system_id: systemId || undefined,
+        }),
       });
 
       const data = await res.json();
@@ -30,15 +52,13 @@ export default function SignupPage() {
         throw new Error(data?.error ?? "Signup failed");
       }
 
+      // אחרי הרשמה מוצלחת – מעבר לדף ההתחברות
+      const params = new URLSearchParams();
+      params.set("registered", "1");
       if (data.requiresEmailConfirmation) {
-        setInfo(
-          "Account created. Check your email to confirm, then sign in.",
-        );
-      } else {
-        // In most Supabase setups with email confirmation enabled, this path
-        // won't be hit, but we keep it for completeness.
-        router.replace("/login");
+        params.set("confirm", "1");
       }
+      router.replace(`/login?${params.toString()}`);
     } catch (err) {
       console.error(err);
       const message =
@@ -105,6 +125,23 @@ export default function SignupPage() {
                   className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
                   placeholder="••••••••"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  מערכת
+                </label>
+                <select
+                  value={systemId}
+                  onChange={(e) => setSystemId(e.target.value)}
+                  className="cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                >
+                  {systems.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {error && (

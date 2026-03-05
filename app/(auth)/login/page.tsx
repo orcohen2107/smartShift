@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
 import { apiFetch } from "@/lib/api/apiFetch";
 
@@ -15,6 +15,9 @@ type EnsureProfileResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered") === "1";
+  const confirmEmail = searchParams.get("confirm") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,6 +98,13 @@ export default function LoginPage() {
                 />
               </div>
 
+              {registered && !error && (
+                <p className="text-sm text-emerald-300" role="status">
+                  {confirmEmail
+                    ? "ההרשמה הושלמה. נא לאשר את המייל ואז להתחבר."
+                    : "ההרשמה הושלמה. כעת תוכל להתחבר."}
+                </p>
+              )}
               {error && (
                 <p className="text-sm text-red-400" role="alert">
                   {error}

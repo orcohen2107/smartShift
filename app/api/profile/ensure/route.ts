@@ -20,6 +20,8 @@ export async function POST(req: Request) {
   const email = userData.user.email ?? "";
   const fullName =
     (userData.user.user_metadata?.full_name as string)?.trim() || email;
+  const systemId =
+    (userData.user.user_metadata?.system_id as string) || null;
 
   // Check if profile already exists.
   const { data: existingProfile, error: profileError } = await supabase
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   if (existingProfile) {
-    const profile = existingProfile as Profile;
+    const profile = existingProfile as Profile & { system_id?: string | null };
     const { data: existingWorker } = await supabase
       .from("workers")
       .select("id")
@@ -45,6 +47,7 @@ export async function POST(req: Request) {
         full_name: profile.full_name,
         email: profile.email,
         user_id: profile.id,
+        system_id: profile.system_id ?? null,
       });
     }
     return NextResponse.json({ profile });
@@ -61,6 +64,17 @@ export async function POST(req: Request) {
 
   const role = !count || count === 0 ? "manager" : "worker";
 
+  // מערכת: מ-metadata או ברירת מחדל (ראשית)
+  let finalSystemId = systemId;
+  if (!finalSystemId) {
+    const { data: firstSystem } = await supabase
+      .from("systems")
+      .select("id")
+      .limit(1)
+      .single();
+    finalSystemId = firstSystem?.id ?? null;
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from("profiles")
     .insert({
@@ -68,6 +82,7 @@ export async function POST(req: Request) {
       full_name: fullName,
       email: email || null,
       role,
+      system_id: finalSystemId,
     })
     .select("*")
     .single();
@@ -79,13 +94,19 @@ export async function POST(req: Request) {
     );
   }
 
-  // קישור worker קיים (שנוסף ידנית) לפי שם דומה – מעדכן אימייל ו-user_id
-  const { data: unlinkedWorkers } = await supabase
+  const profileSystemId = (inserted as { system_id?: string | null })?.system_id ?? null;
+
+  // קישור worker קיים (שנוסף ידנית) לפי שם דומה ומערכת – מעדכן אימייל ו-user_id
+  let toLinkQuery = supabase
     .from("workers")
     .select("id")
     .is("user_id", null)
     .ilike("full_name", fullName.trim())
     .limit(1);
+  if (profileSystemId) {
+    toLinkQuery = toLinkQuery.eq("system_id", profileSystemId);
+  }
+  const { data: unlinkedWorkers } = await toLinkQuery;
 
   const toLink = unlinkedWorkers?.[0];
   if (toLink?.id) {
@@ -100,6 +121,7 @@ export async function POST(req: Request) {
       full_name: fullName,
       email: email || null,
       user_id: userId,
+      system_id: profileSystemId,
     });
   }
 

@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
 import { useConstraints } from "@/contexts/ConstraintsContext";
+import { useProfile } from "@/contexts/ProfileContext";
 import type { Constraint } from "@/lib/utils/interfaces";
-import { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
+import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 
 type ConstraintInput = {
   date: string;
@@ -12,6 +13,11 @@ type ConstraintInput = {
   status: ConstraintStatus;
   note?: string;
 };
+
+function formatDateHe(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}.${m}.${y}`;
+}
 
 function getCurrentWeekRange() {
   const today = new Date();
@@ -33,11 +39,16 @@ function getCurrentWeekRange() {
 }
 
 export default function ConstraintsPage() {
-  const { constraints: items, setConstraints: setItems, loading, error, setError, load, hasCachedData } = useConstraints();
+  const profile = useProfile();
+  const { constraints: items, setConstraints: setItems, systemMembers, loading, error, setError, load, hasCachedData } = useConstraints();
 
   const defaultRange = useMemo(() => getCurrentWeekRange(), []);
   const [fromDate, setFromDate] = useState<string>(defaultRange.from);
   const [toDate, setToDate] = useState<string>(defaultRange.to);
+  const [filterWorkerId, setFilterWorkerId] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [form, setForm] = useState<ConstraintInput>({
     date: "",
@@ -46,52 +57,89 @@ export default function ConstraintsPage() {
     note: "",
   });
 
-  // טעינה רק בכניסה ראשונה (אין cache)
+  // טעינה רק בכניסה ראשונה (אין cache) – מנהל מקבל אילוצים של כולם עם שמות
   useEffect(() => {
-    if (!hasCachedData) void load();
-  }, []);
+    if (hasCachedData || profile === null) return;
+    void load(profile.role === Role.Manager ? { all: true } : undefined);
+  }, [hasCachedData, profile]);
 
   const filteredItems = useMemo(
     () =>
       items.filter((c) => {
         if (fromDate && c.date < fromDate) return false;
         if (toDate && c.date > toDate) return false;
+        if (filterWorkerId && c.worker_id !== filterWorkerId) return false;
         return true;
       }),
-    [items, fromDate, toDate],
+    [items, fromDate, toDate, filterWorkerId],
   );
+
+  const filterOptions = useMemo(() => {
+    if (systemMembers.length > 0) {
+      return systemMembers
+        .map((p) => ({ id: p.id, name: p.full_name ?? "ללא שם" }))
+        .sort((a, b) => a.name.localeCompare(b.name, "he"));
+    }
+    const seen = new Set<string>();
+    const opts: { id: string; name: string }[] = [];
+    items.forEach((c) => {
+      if (seen.has(c.worker_id)) return;
+      seen.add(c.worker_id);
+      opts.push({
+        id: c.worker_id,
+        name: c.worker_name ?? "ללא שם",
+      });
+    });
+    opts.sort((a, b) => a.name.localeCompare(b.name, "he"));
+    return opts;
+  }, [items, systemMembers]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
+    setIsAdding(true);
     try {
-      await apiFetch<Constraint>("/api/constraints", {
+      const created = await apiFetch<Constraint>("/api/constraints", {
         method: "POST",
         json: form,
       });
       setForm((prev) => ({ ...prev, note: "" }));
-      await load();
+      setItems((prev) => [
+        ...prev,
+        { ...created, worker_name: created.worker_name ?? profile?.full_name ?? null },
+      ]);
+      setSuccessMessage("האילוץ נוסף בהצלחה");
+      setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to create constraint");
+    } finally {
+      setIsAdding(false);
     }
   }
 
   async function handleDelete(id: string) {
     setError(null);
+    setSuccessMessage(null);
+    setDeletingId(id);
     try {
       await apiFetch<object>(`/api/constraints/${id}`, {
         method: "DELETE",
       });
       setItems((prev) => prev.filter((c) => c.id !== id));
+      setSuccessMessage("האילוץ הוסר");
+      setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to delete constraint");
+    } finally {
+      setDeletingId(null);
     }
   }
 
   const inputClass =
-    "w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50";
+    "cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark]";
   const labelClass = "block text-xs font-medium text-zinc-700 dark:text-zinc-300";
 
   return (
@@ -175,22 +223,45 @@ export default function ConstraintsPage() {
             />
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center gap-3 justify-end">
+          {successMessage && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400" role="status">
+              {successMessage}
+            </p>
+          )}
           <button
             type="submit"
-            className="rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400"
+            disabled={isAdding}
+            className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-60"
           >
-            הוספת אילוץ
+            {isAdding ? "טוען..." : "הוספת אילוץ"}
           </button>
         </div>
       </form>
 
       <section className="space-y-3">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
             אילוצים (ברירת מחדל: השבוע הנוכחי)
           </h2>
-          <div className="flex flex-wrap gap-2 text-xs">
+          <div className="flex flex-wrap items-end gap-2 text-xs">
+            {filterOptions.length > 0 && (
+              <div className="space-y-1">
+                <label className={labelClass}>פילטר לפי שם</label>
+                <select
+                  value={filterWorkerId}
+                  onChange={(e) => setFilterWorkerId(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">הכל</option>
+                  {filterOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-1">
               <label className={labelClass}>מתאריך</label>
               <input
@@ -221,42 +292,54 @@ export default function ConstraintsPage() {
           </p>
         ) : (
           <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/80">
-            {filteredItems.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100"
-              >
-                <div className="space-y-0.5">
-                  <div className="font-medium">
-                    {c.date} · {c.type === ShiftType.Day ? "משמרת יום" : c.type === ShiftType.Night ? "משמרת לילה" : "כל היום"}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        c.status === ConstraintStatus.Unavailable
-                          ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100"
-                      }`}
-                    >
-                      {c.status === ConstraintStatus.Unavailable
-                        ? "לא זמין"
-                        : "פנוי לכמה שעות"}
-                    </span>
-                    {c.note && (
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                        {c.note}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDelete(c.id)}
-                  className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400"
+            {filteredItems.map((c) => {
+              const isOwner = profile?.id === c.worker_id;
+              return (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100"
                 >
-                  מחיקה
-                </button>
-              </li>
-            ))}
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="font-medium">
+                      {formatDateHe(c.date)} · {c.type === ShiftType.Day ? "משמרת יום" : c.type === ShiftType.Night ? "משמרת לילה" : "כל היום"}
+                      {c.worker_name && (
+                        <span className="mr-2 text-zinc-500 dark:text-zinc-400">
+                          · {c.worker_name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          c.status === ConstraintStatus.Unavailable
+                            ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100"
+                        }`}
+                      >
+                        {c.status === ConstraintStatus.Unavailable
+                          ? "לא זמין"
+                          : "פנוי לכמה שעות"}
+                      </span>
+                      {c.note && (
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                          {c.note}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c.id)}
+                      disabled={deletingId === c.id}
+                      className="cursor-pointer shrink-0 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 disabled:opacity-60"
+                    >
+                      {deletingId === c.id ? "מסיר..." : "מחיקה"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {error && (

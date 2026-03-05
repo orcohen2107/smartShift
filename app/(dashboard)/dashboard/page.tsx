@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api/apiFetch";
 import { useAssignments } from "@/contexts/AssignmentsContext";
-import type { Profile, Shift } from "@/lib/utils/interfaces";
+import { useProfile } from "@/contexts/ProfileContext";
+import type { Shift } from "@/lib/utils/interfaces";
 import { Role, ShiftType } from "@/lib/utils/enums";
 
 const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -32,7 +32,7 @@ function getCurrentWeekDates(): string[] {
 
 export default function DashboardPage() {
   const { overview, loading, error, load } = useAssignments();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const weekDates = useMemo(() => getCurrentWeekDates(), []);
 
@@ -40,12 +40,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!overview) void load();
-  }, []);
-
-  useEffect(() => {
-    apiFetch<{ profile: Profile }>("/api/profile/me")
-      .then((data) => setProfile(data.profile))
-      .catch(() => setProfile(null));
   }, []);
 
   const shiftsByDateType = useMemo(() => {
@@ -235,12 +229,14 @@ export default function DashboardPage() {
         >
           אילוצים
         </Link>
-        <Link
-          href="/assignments"
-          className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          שיבוצים
-        </Link>
+        {isManager && (
+          <Link
+            href="/assignments"
+            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            שיבוצים
+          </Link>
+        )}
       </div>
     </div>
   );

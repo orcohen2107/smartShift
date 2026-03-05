@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/apiFetch";
 import { useAssignments } from "@/contexts/AssignmentsContext";
+import { useProfile } from "@/contexts/ProfileContext";
 import type {
-  AssignmentsOverview,
   Constraint,
   Shift,
   ShiftBoard,
   Worker,
 } from "@/lib/utils/interfaces";
-import { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
+import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 
 type CreateShiftInput = {
   date: string;
@@ -19,6 +20,7 @@ type CreateShiftInput = {
 };
 
 export default function AssignmentsPage() {
+  const router = useRouter();
   const {
     overview,
     loading,
@@ -30,6 +32,7 @@ export default function AssignmentsPage() {
     updateOverview,
   } = useAssignments();
 
+  const profile = useProfile();
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
     date: "",
     type: ShiftType.Day,
@@ -52,6 +55,13 @@ export default function AssignmentsPage() {
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [creatingShift, setCreatingShift] = useState(false);
   const [assigningCellKey, setAssigningCellKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile === null) return;
+    if (profile.role !== Role.Manager) {
+      router.replace("/dashboard");
+    }
+  }, [profile, router]);
 
   // טעינה רק בכניסה ראשונה (אין cache) – מעבר בין טאבים משתמש ב-cache
   useEffect(() => {
@@ -332,6 +342,17 @@ export default function AssignmentsPage() {
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
+  if (profile === null || profile.role !== Role.Manager) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p>טוען...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 relative">
       {loading && (
@@ -536,7 +557,7 @@ export default function AssignmentsPage() {
                   date: e.target.value,
                 }))
               }
-              className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark]"
             />
           </div>
           {!selectedBoard?.single_person_for_day && (

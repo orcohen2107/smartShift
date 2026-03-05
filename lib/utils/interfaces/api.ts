@@ -5,6 +5,12 @@ export interface SignupBody {
   email: string;
   password: string;
   full_name?: string;
+  system_id?: string;
+}
+
+/** Request body for POST /api/systems */
+export interface SystemPostBody {
+  name: string;
 }
 
 /** Request body for POST /api/constraints */

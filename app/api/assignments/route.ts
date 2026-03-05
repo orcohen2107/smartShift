@@ -18,26 +18,41 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase } = res;
+  const { supabase, profile } = res;
+  const systemId = profile.system_id;
   const url = new URL(req.url);
   const typeParam = url.searchParams.get("type") as string | null;
   const type = typeParam === "day" || typeParam === "night" || typeParam === "full_day" ? typeParam : null;
   const allTypes = typeParam === "all" || !typeParam;
   const boardId = url.searchParams.get("board_id");
 
-  let query = supabase
+  // לוחות משותפים לכל המערכות
+  const { data: allBoards, error: boardsErr } = await supabase
+    .from("shift_boards")
+    .select("id")
+    .order("created_at", { ascending: true });
+  if (boardsErr) {
+    return NextResponse.json({ error: boardsErr.message }, { status: 500 });
+  }
+  const validBoardIds = (allBoards ?? []).map((b) => b.id);
+
+  let shiftsQuery = supabase
     .from("shifts")
     .select("*")
     .order("date", { ascending: true });
-
+  if (validBoardIds.length > 0) {
+    shiftsQuery = shiftsQuery.in("board_id", validBoardIds);
+  } else {
+    shiftsQuery = shiftsQuery.eq("board_id", "00000000-0000-0000-0000-000000000000");
+  }
   if (!allTypes && type) {
-    query = query.eq("type", type);
+    shiftsQuery = shiftsQuery.eq("type", type);
   }
-  if (boardId) {
-    query = query.eq("board_id", boardId);
+  if (boardId && validBoardIds.includes(boardId)) {
+    shiftsQuery = shiftsQuery.eq("board_id", boardId);
   }
 
-  const { data: shifts, error: shiftsError } = await query;
+  const { data: shifts, error: shiftsError } = await shiftsQuery;
 
   if (shiftsError) {
     return NextResponse.json(
@@ -48,7 +63,7 @@ export async function GET(req: Request) {
 
   const shiftIds = (shifts ?? []).map((s) => s.id);
 
-  const { data: assignments, error: assignmentsError } = await supabase
+  const { data: rawAssignments, error: assignmentsError } = await supabase
     .from("assignments")
     .select("*")
     .in("shift_id", shiftIds.length ? shiftIds : ["00000000-0000-0000-0000-000000000000"]);
@@ -60,11 +75,15 @@ export async function GET(req: Request) {
     );
   }
 
-  // רשימת כל הכוננים לשיבוץ (מטבלת workers – כולל כאלה שעדיין לא נרשמו)
-  const { data: allWorkers, error: allWorkersError } = await supabase
+  // רשימת הכוננים של המערכת
+  let workersQuery = supabase
     .from("workers")
     .select("*")
     .order("full_name", { ascending: true });
+  if (systemId) {
+    workersQuery = workersQuery.eq("system_id", systemId);
+  }
+  const { data: allWorkers, error: allWorkersError } = await workersQuery;
 
   if (allWorkersError) {
     return NextResponse.json(
@@ -76,11 +95,22 @@ export async function GET(req: Request) {
   const dates = Array.from(new Set((shifts ?? []).map((s) => s.date)));
   const typesFilter = allTypes ? ["day", "night", "full_day"] : type ? [type] : ["day", "night", "full_day"];
 
-  const { data: constraints, error: constraintsError } = await supabase
+  // אילוצים של עובדי המערכת בלבד
+  const systemWorkerIds = new Set((allWorkers ?? []).map((w) => w.id));
+  const assignments = (rawAssignments ?? []).filter((a) => systemWorkerIds.has(a.worker_id));
+
+  const workerIds = (allWorkers ?? []).map((w) => w.id);
+  let constraintsQuery = supabase
     .from("constraints")
     .select("*")
     .in("date", dates.length ? dates : ["1900-01-01"])
     .in("type", typesFilter);
+  if (workerIds.length > 0) {
+    constraintsQuery = constraintsQuery.in("worker_id", workerIds);
+  } else {
+    constraintsQuery = constraintsQuery.eq("worker_id", "00000000-0000-0000-0000-000000000000");
+  }
+  const { data: constraints, error: constraintsError } = await constraintsQuery;
 
   if (constraintsError) {
     return NextResponse.json(
@@ -103,7 +133,7 @@ export async function GET(req: Request) {
 
   const payload: AssignmentsOverview = {
     shifts: (shifts ?? []) as Shift[],
-    assignments: (assignments ?? []) as Assignment[],
+    assignments: assignments as Assignment[],
     workers: (allWorkers ?? []) as Worker[],
     constraints: (constraints ?? []) as Constraint[],
     boards: (boards ?? []) as ShiftBoard[],
@@ -118,7 +148,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase } = res;
+  const { supabase, profile } = res;
   const body = (await req.json()) as AssignmentPostBody;
 
   if (!body.shift_id || !body.worker_id) {
@@ -126,6 +156,22 @@ export async function POST(req: Request) {
       { error: "Missing shift_id or worker_id" },
       { status: 400 },
     );
+  }
+
+  // וידוא שהעובד במערכת של המנהל
+  if (profile.system_id) {
+    const { data: worker } = await supabase
+      .from("workers")
+      .select("id")
+      .eq("id", body.worker_id)
+      .eq("system_id", profile.system_id)
+      .single();
+    if (!worker) {
+      return NextResponse.json(
+        { error: "Worker not in your system" },
+        { status: 403 },
+      );
+    }
   }
 
   const { data, error } = await supabase
