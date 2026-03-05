@@ -41,7 +41,7 @@ export default function LoginPage() {
         method: "POST",
       });
 
-      router.replace("/constraints");
+      router.replace("/dashboard");
     } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error(err);
       setError(err.message ?? "Login failed");

@@ -12,3 +12,8 @@ export function getSupabaseEnv() {
   return { url, anonKey };
 }
 
+/** Service role key – עוקף RLS. לשימוש בפעולות מאומתות (לאחר requireManager וכו׳) */
+export function getSupabaseServiceRoleKey(): string | undefined {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+

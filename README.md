@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Variables
+
+- `NEXT_PUBLIC_SUPABASE_URL` – Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` – Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` – (optional) Service role key – נדרש להסרת שיבוצים. ניתן למצוא ב-Supabase Dashboard → Settings → API
+
 ## Getting Started
 
 First, run the development server:

@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { requireManager } from "@/lib/auth/requireManager";
+import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
 import type {
   Assignment,
   AssignmentsOverview,
-  AssignmentDeleteBody,
   AssignmentPostBody,
   Constraint,
-  Profile,
   Shift,
+  ShiftBoard,
+  Worker,
 } from "@/lib/utils/interfaces";
-import type { ShiftType } from "@/lib/utils/enums";
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -20,20 +20,24 @@ export async function GET(req: Request) {
 
   const { supabase } = res;
   const url = new URL(req.url);
-  const type = url.searchParams.get("type") as ShiftType | null;
+  const typeParam = url.searchParams.get("type") as string | null;
+  const type = typeParam === "day" || typeParam === "night" || typeParam === "full_day" ? typeParam : null;
+  const allTypes = typeParam === "all" || !typeParam;
+  const boardId = url.searchParams.get("board_id");
 
-  if (type !== "day" && type !== "night") {
-    return NextResponse.json(
-      { error: "Query param 'type' must be 'day' or 'night'" },
-      { status: 400 },
-    );
-  }
-
-  const { data: shifts, error: shiftsError } = await supabase
+  let query = supabase
     .from("shifts")
     .select("*")
-    .eq("type", type)
     .order("date", { ascending: true });
+
+  if (!allTypes && type) {
+    query = query.eq("type", type);
+  }
+  if (boardId) {
+    query = query.eq("board_id", boardId);
+  }
+
+  const { data: shifts, error: shiftsError } = await query;
 
   if (shiftsError) {
     return NextResponse.json(
@@ -56,31 +60,11 @@ export async function GET(req: Request) {
     );
   }
 
-  const workerIds = Array.from(
-    new Set((assignments ?? []).map((a) => a.worker_id)),
-  );
-
-  const { data: workers, error: workersError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("role", "worker")
-    .in(
-      "id",
-      workerIds.length ? workerIds : ["00000000-0000-0000-0000-000000000000"],
-    );
-
-  if (workersError) {
-    return NextResponse.json(
-      { error: workersError.message },
-      { status: 500 },
-    );
-  }
-
-  // Also fetch all workers (even if not yet assigned) so managers can assign them.
+  // רשימת כל הכוננים לשיבוץ (מטבלת workers – כולל כאלה שעדיין לא נרשמו)
   const { data: allWorkers, error: allWorkersError } = await supabase
-    .from("profiles")
+    .from("workers")
     .select("*")
-    .eq("role", "worker");
+    .order("full_name", { ascending: true });
 
   if (allWorkersError) {
     return NextResponse.json(
@@ -90,15 +74,13 @@ export async function GET(req: Request) {
   }
 
   const dates = Array.from(new Set((shifts ?? []).map((s) => s.date)));
+  const typesFilter = allTypes ? ["day", "night", "full_day"] : type ? [type] : ["day", "night", "full_day"];
 
   const { data: constraints, error: constraintsError } = await supabase
     .from("constraints")
     .select("*")
-    .in(
-      "date",
-      dates.length ? dates : ["1900-01-01"],
-    )
-    .in("type", [type]);
+    .in("date", dates.length ? dates : ["1900-01-01"])
+    .in("type", typesFilter);
 
   if (constraintsError) {
     return NextResponse.json(
@@ -107,11 +89,24 @@ export async function GET(req: Request) {
     );
   }
 
+  const { data: boards, error: boardsError } = await supabase
+    .from("shift_boards")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (boardsError) {
+    return NextResponse.json(
+      { error: boardsError.message },
+      { status: 500 },
+    );
+  }
+
   const payload: AssignmentsOverview = {
     shifts: (shifts ?? []) as Shift[],
     assignments: (assignments ?? []) as Assignment[],
-    workers: (allWorkers ?? []) as Profile[],
+    workers: (allWorkers ?? []) as Worker[],
     constraints: (constraints ?? []) as Constraint[],
+    boards: (boards ?? []) as ShiftBoard[],
   };
 
   return NextResponse.json(payload);
@@ -158,28 +153,31 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase } = res;
-  const body = (await req.json()) as AssignmentDeleteBody;
+  const url = new URL(req.url);
+  const assignmentId = url.searchParams.get("assignment_id");
 
-  if (!body.assignment_id) {
+  if (!assignmentId) {
     return NextResponse.json(
       { error: "Missing assignment_id" },
       { status: 400 },
     );
   }
 
-  const { error } = await supabase
+  // שימוש ב-admin client כדי לעקוף RLS – כבר אומת שהמשתמש מנהל
+  const admin = getSupabaseAdmin();
+  const { error } = await admin
     .from("assignments")
     .delete()
-    .eq("id", body.assignment_id);
+    .eq("id", assignmentId);
 
   if (error) {
+    console.error("[DELETE /api/assignments]", error);
     return NextResponse.json(
       { error: error.message ?? "Failed to delete assignment" },
       { status: 500 },
     );
   }
 
-  return NextResponse.json({}, { status: 204 });
+  return new Response(null, { status: 204 });
 }
 

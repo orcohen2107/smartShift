@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
+import { useConstraints } from "@/contexts/ConstraintsContext";
 import type { Constraint } from "@/lib/utils/interfaces";
 import { ConstraintStatus, ShiftType } from "@/lib/utils/enums";
 
@@ -10,10 +11,6 @@ type ConstraintInput = {
   type: ShiftType;
   status: ConstraintStatus;
   note?: string;
-};
-
-type ConstraintsResponse = {
-  constraints: Constraint[];
 };
 
 function getCurrentWeekRange() {
@@ -36,9 +33,7 @@ function getCurrentWeekRange() {
 }
 
 export default function ConstraintsPage() {
-  const [items, setItems] = useState<Constraint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { constraints: items, setConstraints: setItems, loading, error, setError, load, hasCachedData } = useConstraints();
 
   const defaultRange = useMemo(() => getCurrentWeekRange(), []);
   const [fromDate, setFromDate] = useState<string>(defaultRange.from);
@@ -51,22 +46,9 @@ export default function ConstraintsPage() {
     note: "",
   });
 
-  async function load() {
-    try {
-      setError(null);
-      setLoading(true);
-      const data = await apiFetch<ConstraintsResponse>("/api/constraints");
-      setItems(data.constraints);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message ?? "Failed to load constraints");
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // טעינה רק בכניסה ראשונה (אין cache)
   useEffect(() => {
-    void load();
+    if (!hasCachedData) void load();
   }, []);
 
   const filteredItems = useMemo(
@@ -89,22 +71,22 @@ export default function ConstraintsPage() {
       });
       setForm((prev) => ({ ...prev, note: "" }));
       await load();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message ?? "Failed to create constraint");
+      setError(err instanceof Error ? err.message : "Failed to create constraint");
     }
   }
 
   async function handleDelete(id: string) {
     setError(null);
     try {
-      await apiFetch<{}>(`/api/constraints/${id}`, {
+      await apiFetch<object>(`/api/constraints/${id}`, {
         method: "DELETE",
       });
       setItems((prev) => prev.filter((c) => c.id !== id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message ?? "Failed to delete constraint");
+      setError(err instanceof Error ? err.message : "Failed to delete constraint");
     }
   }
 
@@ -113,7 +95,15 @@ export default function ConstraintsPage() {
   const labelClass = "block text-xs font-medium text-zinc-700 dark:text-zinc-300";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {loading && (
+        <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60">
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">טוען נתונים...</p>
+          </div>
+        </div>
+      )}
       <div>
         <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           אילוצים
@@ -238,7 +228,7 @@ export default function ConstraintsPage() {
               >
                 <div className="space-y-0.5">
                   <div className="font-medium">
-                    {c.date} · {c.type === "day" ? "משמרת יום" : "משמרת לילה"}
+                    {c.date} · {c.type === ShiftType.Day ? "משמרת יום" : c.type === ShiftType.Night ? "משמרת לילה" : "כל היום"}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span

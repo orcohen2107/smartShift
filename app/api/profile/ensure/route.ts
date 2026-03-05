@@ -33,7 +33,21 @@ export async function POST(req: Request) {
   }
 
   if (existingProfile) {
-    return NextResponse.json({ profile: existingProfile as Profile });
+    const profile = existingProfile as Profile;
+    const { data: existingWorker } = await supabase
+      .from("workers")
+      .select("id")
+      .eq("id", profile.id)
+      .maybeSingle();
+    if (!existingWorker) {
+      await supabase.from("workers").insert({
+        id: profile.id,
+        full_name: profile.full_name,
+        email: profile.email,
+        user_id: profile.id,
+      });
+    }
+    return NextResponse.json({ profile });
   }
 
   // Determine role for the first profile = manager, others = worker.
@@ -63,6 +77,30 @@ export async function POST(req: Request) {
       { error: insertError?.message ?? "Failed to create profile" },
       { status: 500 },
     );
+  }
+
+  // קישור worker קיים (שנוסף ידנית) לפי שם דומה – מעדכן אימייל ו-user_id
+  const { data: unlinkedWorkers } = await supabase
+    .from("workers")
+    .select("id")
+    .is("user_id", null)
+    .ilike("full_name", fullName.trim())
+    .limit(1);
+
+  const toLink = unlinkedWorkers?.[0];
+  if (toLink?.id) {
+    await supabase
+      .from("workers")
+      .update({ user_id: userId, email: email || null })
+      .eq("id", toLink.id);
+  } else {
+    // פרופיל חדש (מנהל או כונן) – מוסיפים גם ל-workers כדי שיופיעו ברשימת השיבוץ
+    await supabase.from("workers").insert({
+      id: userId,
+      full_name: fullName,
+      email: email || null,
+      user_id: userId,
+    });
   }
 
   return NextResponse.json({ profile: inserted as Profile });

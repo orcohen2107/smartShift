@@ -19,8 +19,13 @@ export async function GET(req: Request) {
     .select("*")
     .order("date", { ascending: true });
 
-  if (type === "day" || type === "night") {
+  if (type === "day" || type === "night" || type === "full_day") {
     query = query.eq("type", type);
+  }
+
+  const boardId = url.searchParams.get("board_id");
+  if (boardId) {
+    query = query.eq("board_id", boardId);
   }
 
   const { data, error } = await query;
@@ -41,21 +46,26 @@ export async function POST(req: Request) {
   const { supabase, profile } = res;
   const body = (await req.json()) as ShiftPostBody;
 
-  if (!body.date || !body.type || !body.required_count) {
+  if (!body.date || !body.type) {
     return NextResponse.json(
-      { error: "Missing date, type or required_count" },
+      { error: "Missing date or type" },
       { status: 400 },
     );
   }
 
+  const insertPayload: Record<string, unknown> = {
+    date: body.date,
+    type: body.type,
+    created_by: profile.id,
+    required_count: body.required_count ?? 1,
+  };
+  if (body.board_id) {
+    insertPayload.board_id = body.board_id;
+  }
+
   const { data, error } = await supabase
     .from("shifts")
-    .insert({
-      date: body.date,
-      type: body.type,
-      required_count: body.required_count,
-      created_by: profile.id,
-    })
+    .insert(insertPayload)
     .select("*")
     .single();
 

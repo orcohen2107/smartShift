@@ -15,9 +15,6 @@ export async function PATCH(req: Request, { params }: RouteParamsId) {
   const update: Record<string, unknown> = {};
   if (body.date !== undefined) update.date = body.date;
   if (body.type !== undefined) update.type = body.type;
-  if (body.required_count !== undefined) {
-    update.required_count = body.required_count;
-  }
 
   const { data, error } = await supabase
     .from("shifts")

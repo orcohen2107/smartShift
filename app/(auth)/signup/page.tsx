@@ -164,7 +164,7 @@ export default function SignupPage() {
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
                   2
                 </span>
-                <span>מזמינים עובדים נוספים להירשם ולהצטרף לצוות.</span>
+                <span>מזמינים כוננים נוספים להירשם ולהצטרף לצוות.</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">

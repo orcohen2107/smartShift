@@ -27,14 +27,21 @@ export interface ConstraintPatchBody {
 export interface ShiftPostBody {
   date: string;
   type: ShiftType;
-  required_count: number;
+  board_id?: string;
+  required_count?: number;
+}
+
+/** Request body for POST /api/boards */
+export interface BoardPostBody {
+  name: string;
+  workers_per_shift?: number;
+  single_person_for_day?: boolean;
 }
 
 /** Request body for PATCH /api/shifts/[id] */
 export interface ShiftPatchBody {
   date?: string;
   type?: ShiftType;
-  required_count?: number;
 }
 
 /** Request body for POST /api/assignments */
@@ -46,6 +53,11 @@ export interface AssignmentPostBody {
 /** Request body for DELETE /api/assignments */
 export interface AssignmentDeleteBody {
   assignment_id: string;
+}
+
+/** Request body for POST /api/workers (manager adds person to list) */
+export interface WorkerPostBody {
+  full_name: string;
 }
 
 /** Next.js dynamic route params for [id] routes */

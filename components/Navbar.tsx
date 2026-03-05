@@ -9,6 +9,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import type { Profile } from "@/lib/utils/interfaces";
 
 const links = [
+  { href: "/dashboard", label: "דשבורד" },
   { href: "/constraints", label: "אילוצים" },
   { href: "/assignments", label: "שיבוצים" },
 ];
