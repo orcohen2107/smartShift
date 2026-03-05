@@ -53,25 +53,32 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const shifts = overview?.shifts ?? [];
-    const dayCount = shifts.filter((s) => s.type === ShiftType.Day).length;
-    const nightCount = shifts.filter((s) => s.type === ShiftType.Night).length;
+    const assignments = overview?.assignments ?? [];
     // worker_id – אם מנהל בחר עובד: העובד הנבחר. אחרת: המשתמש המחובר
     const targetWorkerId =
       selectedWorkerId ??
       (profile
         ? overview?.workers?.find((w) => w.user_id === profile.id || w.id === profile.id)?.id
         : null);
-    const assignmentsCount =
+    const myAssignments =
       targetWorkerId != null
-        ? (overview?.assignments.filter((a) => a.worker_id === targetWorkerId).length ?? 0)
-        : 0;
+        ? assignments.filter((a) => a.worker_id === targetWorkerId)
+        : [];
+    const assignmentsCount = myAssignments.length;
+    let dayCount = 0;
+    let nightCount = 0;
+    myAssignments.forEach((a) => {
+      const shift = shifts.find((s) => s.id === a.shift_id);
+      if (shift?.type === ShiftType.Day) dayCount += 1;
+      if (shift?.type === ShiftType.Night) nightCount += 1;
+    });
     const byDay: Record<string, { day: number; night: number }> = {};
     weekDates.forEach((d) => {
       const dayShift = shifts.find((s) => s.date === d && s.type === ShiftType.Day);
       const nightShift = shifts.find((s) => s.date === d && s.type === ShiftType.Night);
       byDay[d] = {
-        day: dayShift ? (overview?.assignments.filter((a) => a.shift_id === dayShift.id).length ?? 0) : 0,
-        night: nightShift ? (overview?.assignments.filter((a) => a.shift_id === nightShift.id).length ?? 0) : 0,
+        day: dayShift ? (assignments.filter((a) => a.shift_id === dayShift.id).length ?? 0) : 0,
+        night: nightShift ? (assignments.filter((a) => a.shift_id === nightShift.id).length ?? 0) : 0,
       };
     });
     return { dayCount, nightCount, assignmentsCount, targetWorkerId, byDay };
