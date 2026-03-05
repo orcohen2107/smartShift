@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth/requireManager";
-import type { Shift, ShiftPatchBody, RouteParamsId } from "@/lib/utils/interfaces";
+import type { Shift, ShiftPatchBody } from "@/lib/utils/interfaces";
 
-export async function PATCH(req: Request, { params }: RouteParamsId) {
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
   const { supabase } = res;
-  const id = params.id;
+  const { id } = await params;
   const body = (await req.json()) as ShiftPatchBody;
 
   const update: Record<string, unknown> = {};
@@ -33,14 +36,17 @@ export async function PATCH(req: Request, { params }: RouteParamsId) {
   return NextResponse.json(data as Shift);
 }
 
-export async function DELETE(req: Request, { params }: RouteParamsId) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
   const { supabase } = res;
-  const id = params.id;
+  const { id } = await params;
 
   const { error } = await supabase.from("shifts").delete().eq("id", id);
 

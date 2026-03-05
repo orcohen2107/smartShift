@@ -2,15 +2,17 @@ import { NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth/requireManager";
 import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
 import type { Profile } from "@/lib/utils/interfaces";
-import type { RouteParamsId } from "@/lib/utils/interfaces";
 
-export async function POST(req: Request, { params }: RouteParamsId) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ error: "Missing profile id" }, { status: 400 });
   }

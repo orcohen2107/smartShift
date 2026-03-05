@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
 import { apiFetch } from "@/lib/api/apiFetch";
@@ -13,7 +13,7 @@ type EnsureProfileResponse = {
   };
 };
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered") === "1";
@@ -170,6 +170,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+          <p className="text-sm text-zinc-400">טוען...</p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
 
