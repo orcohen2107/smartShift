@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
 import { useConstraints } from "@/contexts/ConstraintsContext";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -94,7 +94,7 @@ export default function ConstraintsPage() {
     return opts;
   }, [items, systemMembers]);
 
-  async function handleCreate(e: React.FormEvent) {
+  const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -117,9 +117,9 @@ export default function ConstraintsPage() {
     } finally {
       setIsAdding(false);
     }
-  }
+  }, [form, profile?.full_name, setItems, setError, setSuccessMessage]);
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     setError(null);
     setSuccessMessage(null);
     setDeletingId(id);
@@ -136,10 +136,14 @@ export default function ConstraintsPage() {
     } finally {
       setDeletingId(null);
     }
-  }
+  }, [setItems, setError, setSuccessMessage]);
 
   const inputClass =
-    "cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark]";
+    "cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark] [color-scheme:light]";
+  const dateInputClass =
+    "cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 pe-9 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]";
+  const dateInputClassCompact =
+    "cursor-pointer w-full min-h-[38px] min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 pe-8 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark] sm:min-h-[44px] sm:rounded-xl sm:px-3 sm:py-2 sm:pe-9 sm:text-sm";
   const labelClass = "block text-xs font-medium text-zinc-700 dark:text-zinc-300";
 
   return (
@@ -163,9 +167,9 @@ export default function ConstraintsPage() {
 
       <form
         onSubmit={handleCreate}
-        className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
+        className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           <div className="space-y-1">
             <label className={labelClass}>תאריך</label>
             <input
@@ -175,7 +179,7 @@ export default function ConstraintsPage() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, date: e.target.value }))
               }
-              className={inputClass}
+              className={dateInputClass}
             />
           </div>
           <div className="space-y-1">
@@ -210,7 +214,7 @@ export default function ConstraintsPage() {
               <option value={ConstraintStatus.Partial}>פנוי לכמה שעות</option>
             </select>
           </div>
-          <div className="space-y-1 md:col-span-1">
+          <div className="space-y-1 sm:col-span-2 md:col-span-1">
             <label className={labelClass}>הערה (אופציונלי)</label>
             <input
               type="text"
@@ -244,9 +248,9 @@ export default function ConstraintsPage() {
           <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
             אילוצים (ברירת מחדל: השבוע הנוכחי)
           </h2>
-          <div className="flex flex-wrap items-end gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
             {filterOptions.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-1 col-span-2 md:col-span-1">
                 <label className={labelClass}>פילטר לפי שם</label>
                 <select
                   value={filterWorkerId}
@@ -262,22 +266,22 @@ export default function ConstraintsPage() {
                 </select>
               </div>
             )}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <label className={labelClass}>מתאריך</label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className={inputClass}
+                className={dateInputClassCompact}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <label className={labelClass}>עד תאריך</label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className={inputClass}
+                className={dateInputClassCompact}
               />
             </div>
           </div>

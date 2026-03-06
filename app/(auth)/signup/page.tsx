@@ -70,12 +70,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-4 py-8 flex items-center justify-center">
-      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/70 shadow-2xl backdrop-blur-xl">
+    <div className="flex min-h-screen min-h-[100dvh] items-center justify-center overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-3 py-6 sm:px-4 sm:py-8">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
         <div className="pointer-events-none absolute -left-32 top-[-80px] hidden h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/40 via-sky-400/30 to-violet-500/30 blur-3xl md:block" />
         <div className="relative flex flex-col md:flex-row-reverse">
           {/* טור טופס הרשמה */}
-          <div className="w-full p-8 md:w-1/2 md:p-10 lg:p-12">
+          <div className="w-full p-5 sm:p-6 md:w-1/2 md:p-10 lg:p-12">
             <div className="mb-8">
               <h1 className="mb-2 text-2xl font-semibold text-zinc-50 lg:text-3xl">
                 יצירת משתמש חדש
@@ -95,7 +95,7 @@ export default function SignupPage() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
                   placeholder="השם המלא שלך"
                 />
               </div>
@@ -108,7 +108,7 @@ export default function SignupPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
                   placeholder="you@example.com"
                 />
               </div>
@@ -122,7 +122,7 @@ export default function SignupPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
                   placeholder="••••••••"
                 />
               </div>
@@ -134,7 +134,7 @@ export default function SignupPage() {
                 <select
                   value={systemId}
                   onChange={(e) => setSystemId(e.target.value)}
-                  className="cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-sm text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40"
+                  className="min-h-[44px] cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
                 >
                   {systems.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -158,7 +158,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-4 flex w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:opacity-60"
+                className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:opacity-60"
               >
                 {loading ? "יוצר משתמש..." : "הרשמה"}
               </button>

@@ -442,10 +442,10 @@ export default function AssignmentsPage() {
       )}
 
       {showCreateBoard && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
           <form
             onSubmit={handleCreateBoard}
-            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 my-auto"
           >
             <h3 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               יצירת לוח שיבוצים חדש
@@ -522,8 +522,8 @@ export default function AssignmentsPage() {
       )}
 
       {pendingConstraintConfirm && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 my-auto">
             <h3 className="mb-3 text-base font-semibold text-zinc-800 dark:text-zinc-200">
               אילוץ בתאריך
             </h3>
@@ -564,7 +564,7 @@ export default function AssignmentsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             שיבוצים
@@ -573,7 +573,7 @@ export default function AssignmentsPage() {
             ניהול משמרות ושיבוץ כוננים (שינויים — מנהל בלבד).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => void load()}
@@ -767,8 +767,8 @@ export default function AssignmentsPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
-              <table className="w-full min-w-[600px] text-sm">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-xl sm:rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
+              <table className="w-full min-w-[480px] sm:min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-700">
                     <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">תאריך</th>

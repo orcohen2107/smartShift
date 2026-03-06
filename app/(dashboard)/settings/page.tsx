@@ -142,18 +142,18 @@ export default function SettingsPage() {
           מערכות
         </h2>
         <div className="p-4">
-          <form onSubmit={handleAddSystem} className="flex gap-2">
+          <form onSubmit={handleAddSystem} className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
               value={newSystemName}
               onChange={(e) => setNewSystemName(e.target.value)}
               placeholder="שם מערכת חדשה"
-              className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             />
             <button
               type="submit"
               disabled={addingSystem || !newSystemName.trim()}
-              className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+              className="cursor-pointer min-h-[44px] shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
             >
               {addingSystem ? "מוסיף..." : "הוסף מערכת"}
             </button>
@@ -179,16 +179,16 @@ export default function SettingsPage() {
             unregisteredWorkers.map((w) => (
               <li
                 key={w.id}
-                className="flex items-center justify-between px-4 py-3 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
               >
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                <span className="min-w-0 flex-1 font-medium text-zinc-900 dark:text-zinc-100">
                   {w.full_name ?? "ללא שם"}
                 </span>
                 <button
                   type="button"
                   onClick={() => handleDeleteWorker(w.id)}
                   disabled={deletingWorkerId === w.id}
-                  className="cursor-pointer rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
+                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
                 >
                   {deletingWorkerId === w.id ? "מוחק..." : "מחק כונן"}
                 </button>
@@ -206,9 +206,9 @@ export default function SettingsPage() {
           {profiles.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between px-4 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
                   {p.full_name ?? p.email ?? "ללא שם"}
                 </span>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => handlePromote(p.id)}
                   disabled={!!promotingId}
-                  className="cursor-pointer rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
                 >
                   {promotingId === p.id ? "מעדכן..." : "הפוך למנהל"}
                 </button>

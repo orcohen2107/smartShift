@@ -43,9 +43,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <ProfileProvider>
       <AssignmentsProvider>
         <ConstraintsProvider>
-          <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+          <div className="min-h-screen overflow-x-hidden bg-zinc-50 dark:bg-zinc-950">
             <Navbar />
-            <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+            <main className="mx-auto min-w-0 max-w-5xl px-3 py-4 sm:px-4 sm:py-6">{children}</main>
           </div>
         </ConstraintsProvider>
       </AssignmentsProvider>
