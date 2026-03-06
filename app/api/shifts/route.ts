@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { requireManager } from "@/lib/auth/requireManager";
+import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
 import type { Shift, ShiftPostBody } from "@/lib/utils/interfaces";
 import type { ShiftType } from "@/lib/utils/enums";
 
@@ -63,7 +64,9 @@ export async function POST(req: Request) {
     insertPayload.board_id = body.board_id;
   }
 
-  const { data, error } = await supabase
+  // שימוש ב-admin כדי שהמשמרת תישמר ותופיע לכל המנהלים במערכת
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
     .from("shifts")
     .insert(insertPayload)
     .select("*")

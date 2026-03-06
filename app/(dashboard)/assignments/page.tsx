@@ -68,6 +68,22 @@ export default function AssignmentsPage() {
     if (!overview) void load();
   }, []);
 
+  // קפיצה לשבוע שמכיל משמרות אם בשבוע הנוכחי אין כלום
+  const weekDatesForCheck = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+  useEffect(() => {
+    if (!overview?.shifts?.length) return;
+    const filtered = selectedBoardId
+      ? overview.shifts.filter((s) => s.board_id === selectedBoardId)
+      : overview.shifts;
+    if (filtered.length === 0) return;
+    const weekSet = new Set(weekDatesForCheck);
+    const hasShiftInWeek = filtered.some((s) => weekSet.has(s.date));
+    if (!hasShiftInWeek) {
+      const firstDate = filtered.map((s) => s.date).sort()[0];
+      if (firstDate) setWeekOffset(getWeekOffsetForDate(firstDate));
+    }
+  }, [overview?.shifts, selectedBoardId, weekDatesForCheck]);
+
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {
     const shifts = overview?.shifts ?? [];
@@ -319,6 +335,21 @@ export default function AssignmentsPage() {
     return out;
   }
 
+  /** מחזיר איזה weekOffset יציג את השבוע שמכיל את התאריך dateStr */
+  function getWeekOffsetForDate(dateStr: string): number {
+    const today = new Date();
+    const currentStart = new Date(today);
+    currentStart.setDate(today.getDate() - today.getDay());
+    currentStart.setHours(0, 0, 0, 0);
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const target = new Date(y, m - 1, d);
+    const targetStart = new Date(target);
+    targetStart.setDate(target.getDate() - target.getDay());
+    targetStart.setHours(0, 0, 0, 0);
+    const diffMs = targetStart.getTime() - currentStart.getTime();
+    return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+  }
+
   const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
   function formatDateHe(dateStr: string): string {
@@ -348,6 +379,18 @@ export default function AssignmentsPage() {
         <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
           <p>טוען...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // עד שלא נטען overview – מציגים טעינה כדי שעדכוני state (שיבוץ/משמרת) יעבדו
+  if (!overview) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p>{loading ? "טוען..." : "שגיאה בטעינה"}</p>
         </div>
       </div>
     );
@@ -405,7 +448,7 @@ export default function AssignmentsPage() {
               {!newBoardSinglePerson && (
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    כמות אנשים במשמרת
+                    כמות כוננים במשמרת
                   </label>
                   <input
                     type="number"
@@ -578,25 +621,6 @@ export default function AssignmentsPage() {
                 <option value="day">משמרת יום</option>
                 <option value="night">משמרת לילה</option>
               </select>
-            </div>
-          )}
-          {selectedBoard && !selectedBoard.single_person_for_day && selectedBoard.workers_per_shift > 1 && (
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                כמות במשמרת
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={createShiftForm.required_count ?? selectedBoard.workers_per_shift}
-                onChange={(e) =>
-                  setCreateShiftForm((prev) => ({
-                    ...prev,
-                    required_count: parseInt(e.target.value, 10) || 1,
-                  }))
-                }
-                className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-              />
             </div>
           )}
           <div className="space-y-1">

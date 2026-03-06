@@ -26,17 +26,26 @@ export async function GET(req: Request) {
   const allTypes = typeParam === "all" || !typeParam;
   const boardId = url.searchParams.get("board_id");
 
-  // לוחות משותפים לכל המערכות
-  const { data: allBoards, error: boardsErr } = await supabase
+  // שליפה עם admin כדי לעקוף RLS – משמרות ולוחות יופיעו תמיד אחרי יצירה
+  const admin = getSupabaseAdmin();
+
+  // לוחות של המערכת של המשתמש בלבד – כל המנהלים באותה מערכת רואים אותם
+  let boardsQuery = admin
     .from("shift_boards")
     .select("id")
     .order("created_at", { ascending: true });
+  if (systemId) {
+    boardsQuery = boardsQuery.eq("system_id", systemId);
+  } else {
+    boardsQuery = boardsQuery.is("system_id", null);
+  }
+  const { data: allBoards, error: boardsErr } = await boardsQuery;
   if (boardsErr) {
     return NextResponse.json({ error: boardsErr.message }, { status: 500 });
   }
   const validBoardIds = (allBoards ?? []).map((b) => b.id);
 
-  let shiftsQuery = supabase
+  let shiftsQuery = admin
     .from("shifts")
     .select("*")
     .order("date", { ascending: true });
@@ -63,7 +72,7 @@ export async function GET(req: Request) {
 
   const shiftIds = (shifts ?? []).map((s) => s.id);
 
-  const { data: rawAssignments, error: assignmentsError } = await supabase
+  const { data: rawAssignments, error: assignmentsError } = await admin
     .from("assignments")
     .select("*")
     .in("shift_id", shiftIds.length ? shiftIds : ["00000000-0000-0000-0000-000000000000"]);
@@ -75,8 +84,8 @@ export async function GET(req: Request) {
     );
   }
 
-  // רשימת הכוננים של המערכת
-  let workersQuery = supabase
+  // רשימת הכוננים של המערכת – admin כדי לעקוף RLS (כוננים חדשים יופיעו)
+  let workersQuery = admin
     .from("workers")
     .select("*")
     .order("full_name", { ascending: true });
@@ -119,10 +128,16 @@ export async function GET(req: Request) {
     );
   }
 
-  const { data: boards, error: boardsError } = await supabase
+  let boardsListQuery = admin
     .from("shift_boards")
     .select("*")
     .order("created_at", { ascending: true });
+  if (systemId) {
+    boardsListQuery = boardsListQuery.eq("system_id", systemId);
+  } else {
+    boardsListQuery = boardsListQuery.is("system_id", null);
+  }
+  const { data: boards, error: boardsError } = await boardsListQuery;
 
   if (boardsError) {
     return NextResponse.json(
@@ -174,7 +189,9 @@ export async function POST(req: Request) {
     }
   }
 
-  const { data, error } = await supabase
+  // שימוש ב-admin כדי שהשיבוץ יישמר ויופיע לכל המנהלים במערכת
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
     .from("assignments")
     .insert({
       shift_id: body.shift_id,

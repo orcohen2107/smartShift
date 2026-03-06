@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/apiFetch";
-import type { Profile, System } from "@/lib/utils/interfaces";
+import type { Profile, System, Worker } from "@/lib/utils/interfaces";
 import { Role } from "@/lib/utils/enums";
 
 export default function SettingsPage() {
@@ -15,6 +15,8 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [addingSystem, setAddingSystem] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [deletingWorkerId, setDeletingWorkerId] = useState<string | null>(null);
 
   const loadProfiles = useCallback(async () => {
     setError(null);
@@ -43,10 +45,20 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const loadWorkers = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ workers: Worker[] }>("/api/workers");
+      setWorkers(data.workers ?? []);
+    } catch {
+      setWorkers([]);
+    }
+  }, []);
+
   useEffect(() => {
     void loadProfiles();
     void loadSystems();
-  }, [loadProfiles, loadSystems]);
+    void loadWorkers();
+  }, [loadProfiles, loadSystems, loadWorkers]);
 
   async function handleAddSystem(e: FormEvent) {
     e.preventDefault();
@@ -84,6 +96,21 @@ export default function SettingsPage() {
       setPromotingId(null);
     }
   }
+
+  async function handleDeleteWorker(id: string) {
+    setError(null);
+    setDeletingWorkerId(id);
+    try {
+      await apiFetch(`/api/workers/${id}`, { method: "DELETE" });
+      setWorkers((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete worker");
+    } finally {
+      setDeletingWorkerId(null);
+    }
+  }
+
+  const unregisteredWorkers = workers.filter((w) => w.user_id == null);
 
   if (loading) {
     return (
@@ -137,6 +164,38 @@ export default function SettingsPage() {
             ))}
           </ul>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
+        <h2 className="border-b border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
+          כוננים שטרם נרשמו
+        </h2>
+        <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          {unregisteredWorkers.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+              אין כוננים שטרם נרשמו.
+            </li>
+          ) : (
+            unregisteredWorkers.map((w) => (
+              <li
+                key={w.id}
+                className="flex items-center justify-between px-4 py-3 text-sm"
+              >
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {w.full_name ?? "ללא שם"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteWorker(w.id)}
+                  disabled={deletingWorkerId === w.id}
+                  className="cursor-pointer rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
+                >
+                  {deletingWorkerId === w.id ? "מוחק..." : "מחק כונן"}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">

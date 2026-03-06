@@ -31,7 +31,7 @@ function getCurrentWeekDates(): string[] {
 }
 
 export default function DashboardPage() {
-  const { overview, loading, error, load } = useAssignments();
+  const { overview, loading, error, load, selectedBoardId, setSelectedBoardId } = useAssignments();
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const weekDates = useMemo(() => getCurrentWeekDates(), []);
@@ -42,17 +42,24 @@ export default function DashboardPage() {
     if (!overview) void load();
   }, []);
 
+  // סינון משמרות לפי לוח נבחר – כולם יכולים לעבור בין הלוחות
+  const shiftsFiltered = useMemo(() => {
+    const shifts = overview?.shifts ?? [];
+    if (!selectedBoardId) return shifts;
+    return shifts.filter((s) => s.board_id === selectedBoardId);
+  }, [overview?.shifts, selectedBoardId]);
+
   const shiftsByDateType = useMemo(() => {
     const map: Record<string, { day?: Shift; night?: Shift }> = {};
-    overview?.shifts.forEach((s) => {
+    shiftsFiltered.forEach((s) => {
       if (!map[s.date]) map[s.date] = {};
       map[s.date][s.type as "day" | "night"] = s;
     });
     return map;
-  }, [overview]);
+  }, [shiftsFiltered]);
 
   const stats = useMemo(() => {
-    const shifts = overview?.shifts ?? [];
+    const shifts = shiftsFiltered;
     const assignments = overview?.assignments ?? [];
     // worker_id – אם מנהל בחר עובד: העובד הנבחר. אחרת: המשתמש המחובר
     const targetWorkerId =
@@ -82,7 +89,7 @@ export default function DashboardPage() {
       };
     });
     return { dayCount, nightCount, assignmentsCount, targetWorkerId, byDay };
-  }, [overview, weekDates, profile, selectedWorkerId]);
+  }, [overview, weekDates, profile, selectedWorkerId, shiftsFiltered]);
 
   const workersById = useMemo(() => {
     const map: Record<string, { full_name: string | null }> = {};
@@ -115,6 +122,8 @@ export default function DashboardPage() {
     );
   }
 
+  const boards = overview?.boards ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -126,7 +135,28 @@ export default function DashboardPage() {
             סקירה וסטטיסטיקות לשבוע הנוכחי
           </p>
         </div>
-        {isManager && overview?.workers && overview.workers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          {boards.length > 0 && (
+            <div className="flex flex-col items-center space-y-1">
+              <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                לוח שיבוצים
+              </label>
+              <select
+                value={selectedBoardId ?? ""}
+                onChange={(e) => setSelectedBoardId(e.target.value || null)}
+                className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              >
+                <option value="">כל הלוחות</option>
+                {boards.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : " (אדם יחיד)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {isManager && overview?.workers && overview.workers.length > 0 && (
           <div className="flex flex-col items-center space-y-1">
             <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
               צפייה בסיכום שיבוצים של
@@ -147,7 +177,8 @@ export default function DashboardPage() {
                 ))}
             </select>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
