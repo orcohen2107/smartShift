@@ -55,6 +55,12 @@ export default function AssignmentsPage() {
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [creatingShift, setCreatingShift] = useState(false);
   const [assigningCellKey, setAssigningCellKey] = useState<string | null>(null);
+  const [pendingConstraintConfirm, setPendingConstraintConfirm] = useState<{
+    shiftId: string;
+    workerId: string;
+    workerName: string;
+  } | null>(null);
+  const [assigningFromConstraintModal, setAssigningFromConstraintModal] = useState(false);
 
   useEffect(() => {
     if (profile === null) return;
@@ -67,6 +73,22 @@ export default function AssignmentsPage() {
   useEffect(() => {
     if (!overview) void load();
   }, []);
+
+  // קפיצה לשבוע שמכיל משמרות אם בשבוע הנוכחי אין כלום
+  const weekDatesForCheck = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+  useEffect(() => {
+    if (!overview?.shifts?.length) return;
+    const filtered = selectedBoardId
+      ? overview.shifts.filter((s) => s.board_id === selectedBoardId)
+      : overview.shifts;
+    if (filtered.length === 0) return;
+    const weekSet = new Set(weekDatesForCheck);
+    const hasShiftInWeek = filtered.some((s) => weekSet.has(s.date));
+    if (!hasShiftInWeek) {
+      const firstDate = filtered.map((s) => s.date).sort()[0];
+      if (firstDate) setWeekOffset(getWeekOffsetForDate(firstDate));
+    }
+  }, [overview?.shifts, selectedBoardId, weekDatesForCheck]);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {
@@ -100,6 +122,13 @@ export default function AssignmentsPage() {
 
   function getAssignmentsForShift(shiftId: string) {
     return overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [];
+  }
+
+  /** בודק אם לעובד יש אילוץ בתאריך הנתון (כל סוג) */
+  function hasConstraintForDate(workerId: string, date: string): boolean {
+    return (overview?.constraints ?? []).some(
+      (c) => c.worker_id === workerId && c.date === date,
+    );
   }
 
   function hasUnavailableConstraint(
@@ -174,20 +203,33 @@ export default function AssignmentsPage() {
         },
       });
 
-      let assignment: { id: string; shift_id: string; worker_id: string; created_at: string } | null = null;
-      if (initialWorkerId) {
-        assignment = await apiFetch("/api/assignments", {
-          method: "POST",
-          json: { shift_id: createdShift.id, worker_id: initialWorkerId },
-        });
-        setInitialWorkerId("");
-      }
-
       updateOverview((prev) => ({
         ...prev,
         shifts: [...prev.shifts, createdShift],
-        assignments: assignment ? [...prev.assignments, assignment] : prev.assignments,
       }));
+
+      let assignment: { id: string; shift_id: string; worker_id: string; created_at: string } | null = null;
+      if (initialWorkerId) {
+        const workerName = workersById[initialWorkerId]?.full_name ?? workersById[initialWorkerId]?.email ?? "העובד";
+        if (hasConstraintForDate(initialWorkerId, createShiftForm.date)) {
+          setPendingConstraintConfirm({
+            shiftId: createdShift.id,
+            workerId: initialWorkerId,
+            workerName,
+          });
+          setInitialWorkerId("");
+        } else {
+          assignment = await apiFetch("/api/assignments", {
+            method: "POST",
+            json: { shift_id: createdShift.id, worker_id: initialWorkerId },
+          });
+          setInitialWorkerId("");
+          updateOverview((prev) => ({
+            ...prev,
+            assignments: [...prev.assignments, assignment!],
+          }));
+        }
+      }
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to create shift");
@@ -196,17 +238,26 @@ export default function AssignmentsPage() {
     }
   }
 
+  async function doAssign(shiftId: string, workerId: string) {
+    const assignment = await apiFetch<{ id: string; shift_id: string; worker_id: string; created_at: string }>("/api/assignments", {
+      method: "POST",
+      json: { shift_id: shiftId, worker_id: workerId },
+    });
+    updateOverview((prev) => ({
+      ...prev,
+      assignments: [...prev.assignments, assignment],
+    }));
+  }
+
   async function handleAssign(shift: Shift, workerId: string) {
     setError(null);
+    const workerName = workersById[workerId]?.full_name ?? workersById[workerId]?.email ?? "העובד";
+    if (hasConstraintForDate(workerId, shift.date)) {
+      setPendingConstraintConfirm({ shiftId: shift.id, workerId, workerName });
+      return;
+    }
     try {
-      const assignment = await apiFetch<{ id: string; shift_id: string; worker_id: string; created_at: string }>("/api/assignments", {
-        method: "POST",
-        json: { shift_id: shift.id, worker_id: workerId },
-      });
-      updateOverview((prev) => ({
-        ...prev,
-        assignments: [...prev.assignments, assignment],
-      }));
+      await doAssign(shift.id, workerId);
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to assign worker");
@@ -287,14 +338,13 @@ export default function AssignmentsPage() {
           shifts: [...prev.shifts, shift!],
         }));
       }
-      const assignment = await apiFetch<{ id: string; shift_id: string; worker_id: string; created_at: string }>("/api/assignments", {
-        method: "POST",
-        json: { shift_id: shift.id, worker_id: workerId },
-      });
-      updateOverview((prev) => ({
-        ...prev,
-        assignments: [...prev.assignments, assignment],
-      }));
+      const workerName = workersById[workerId]?.full_name ?? workersById[workerId]?.email ?? "העובד";
+      if (hasConstraintForDate(workerId, date)) {
+        setAssigningCellKey(null);
+        setPendingConstraintConfirm({ shiftId: shift.id, workerId, workerName });
+        return;
+      }
+      await doAssign(shift.id, workerId);
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to assign");
@@ -317,6 +367,21 @@ export default function AssignmentsPage() {
       );
     }
     return out;
+  }
+
+  /** מחזיר איזה weekOffset יציג את השבוע שמכיל את התאריך dateStr */
+  function getWeekOffsetForDate(dateStr: string): number {
+    const today = new Date();
+    const currentStart = new Date(today);
+    currentStart.setDate(today.getDate() - today.getDay());
+    currentStart.setHours(0, 0, 0, 0);
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const target = new Date(y, m - 1, d);
+    const targetStart = new Date(target);
+    targetStart.setDate(target.getDate() - target.getDay());
+    targetStart.setHours(0, 0, 0, 0);
+    const diffMs = targetStart.getTime() - currentStart.getTime();
+    return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
   }
 
   const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -353,6 +418,18 @@ export default function AssignmentsPage() {
     );
   }
 
+  // עד שלא נטען overview – מציגים טעינה כדי שעדכוני state (שיבוץ/משמרת) יעבדו
+  if (!overview) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p>{loading ? "טוען..." : "שגיאה בטעינה"}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 relative">
       {loading && (
@@ -365,10 +442,10 @@ export default function AssignmentsPage() {
       )}
 
       {showCreateBoard && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
           <form
             onSubmit={handleCreateBoard}
-            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 my-auto"
           >
             <h3 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               יצירת לוח שיבוצים חדש
@@ -405,7 +482,7 @@ export default function AssignmentsPage() {
               {!newBoardSinglePerson && (
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    כמות אנשים במשמרת
+                    כמות כוננים במשמרת
                   </label>
                   <input
                     type="number"
@@ -443,7 +520,51 @@ export default function AssignmentsPage() {
           </form>
         </div>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+
+      {pendingConstraintConfirm && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 my-auto">
+            <h3 className="mb-3 text-base font-semibold text-zinc-800 dark:text-zinc-200">
+              אילוץ בתאריך
+            </h3>
+            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+              ל־{pendingConstraintConfirm.workerName} יש אילוץ באותו יום. אתה בטוח שאתה רוצה לשבץ אותו?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingConstraintConfirm(null)}
+                disabled={assigningFromConstraintModal}
+                className="cursor-pointer rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const { shiftId, workerId } = pendingConstraintConfirm;
+                  setAssigningFromConstraintModal(true);
+                  try {
+                    await doAssign(shiftId, workerId);
+                    setPendingConstraintConfirm(null);
+                  } catch (err: unknown) {
+                    console.error(err);
+                    setError(err instanceof Error ? err.message : "Failed to assign worker");
+                  } finally {
+                    setAssigningFromConstraintModal(false);
+                  }
+                }}
+                disabled={assigningFromConstraintModal}
+                className="cursor-pointer rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 shadow-sm transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {assigningFromConstraintModal ? "טוען…" : "כן, לשבץ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             שיבוצים
@@ -452,7 +573,7 @@ export default function AssignmentsPage() {
             ניהול משמרות ושיבוץ כוננים (שינויים — מנהל בלבד).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => void load()}
@@ -580,25 +701,6 @@ export default function AssignmentsPage() {
               </select>
             </div>
           )}
-          {selectedBoard && !selectedBoard.single_person_for_day && selectedBoard.workers_per_shift > 1 && (
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                כמות במשמרת
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={createShiftForm.required_count ?? selectedBoard.workers_per_shift}
-                onChange={(e) =>
-                  setCreateShiftForm((prev) => ({
-                    ...prev,
-                    required_count: parseInt(e.target.value, 10) || 1,
-                  }))
-                }
-                className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-              />
-            </div>
-          )}
           <div className="space-y-1">
             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
               שיבוץ ראשוני (אופציונלי)
@@ -665,8 +767,8 @@ export default function AssignmentsPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
-              <table className="w-full min-w-[600px] text-sm">
+          <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-xl sm:rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
+              <table className="w-full min-w-[480px] sm:min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-700">
                     <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">תאריך</th>
@@ -717,12 +819,25 @@ export default function AssignmentsPage() {
                           )}
                           {assigns.map((a) => {
                             const w = workersById[a.worker_id];
+                            const hasConstraint = shift && hasConstraintForDate(a.worker_id, shift.date);
                             return (
                               <div
                                 key={a.id}
                                 className="flex items-center justify-between gap-1 text-xs"
                               >
-                                <span>{w?.full_name ?? "—"}</span>
+                                <span className="inline-flex items-center gap-1">
+                                  {w?.full_name ?? "—"}
+                                  {hasConstraint && (
+                                    <span
+                                      className="inline-flex shrink-0 text-amber-500"
+                                      title="קיים אילוץ בתאריך זה"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+                                        <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                                      </svg>
+                                    </span>
+                                  )}
+                                </span>
                                 {canEdit && shift && (
                                   <button
                                     type="button"
@@ -876,6 +991,7 @@ export default function AssignmentsPage() {
                         <ul className="space-y-1 text-xs">
                           {shiftAssignments.map((a) => {
                             const worker = workersById[a.worker_id];
+                            const hasConstraint = hasConstraintForDate(a.worker_id, shift.date);
                             const unavailable = hasUnavailableConstraint(
                               worker?.user_id ?? null,
                               shift.date,
@@ -887,8 +1003,18 @@ export default function AssignmentsPage() {
                                 className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                  <span className="inline-flex items-center gap-1 font-medium text-zinc-900 dark:text-zinc-100">
                                     {worker?.full_name ?? "כונן"}
+                                    {hasConstraint && (
+                                      <span
+                                        className="inline-flex shrink-0 text-amber-500"
+                                        title="קיים אילוץ בתאריך זה"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+                                          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                                        </svg>
+                                      </span>
+                                    )}
                                   </span>
                                   {worker && !worker.user_id && (
                                     <span className="text-[10px] text-zinc-500 dark:text-zinc-400">

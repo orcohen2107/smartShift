@@ -43,6 +43,7 @@ export interface ShiftBoard {
   single_person_for_day: boolean;
   created_by: string | null;
   created_at: string;
+  system_id: string | null;
 }
 
 export interface Constraint {

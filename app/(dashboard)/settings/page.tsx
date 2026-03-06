@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api/apiFetch";
-import type { Profile, System } from "@/lib/utils/interfaces";
+import type { Profile, System, Worker } from "@/lib/utils/interfaces";
 import { Role } from "@/lib/utils/enums";
 
 export default function SettingsPage() {
@@ -15,6 +15,8 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [addingSystem, setAddingSystem] = useState(false);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [deletingWorkerId, setDeletingWorkerId] = useState<string | null>(null);
 
   const loadProfiles = useCallback(async () => {
     setError(null);
@@ -43,10 +45,20 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const loadWorkers = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ workers: Worker[] }>("/api/workers");
+      setWorkers(data.workers ?? []);
+    } catch {
+      setWorkers([]);
+    }
+  }, []);
+
   useEffect(() => {
     void loadProfiles();
     void loadSystems();
-  }, [loadProfiles, loadSystems]);
+    void loadWorkers();
+  }, [loadProfiles, loadSystems, loadWorkers]);
 
   async function handleAddSystem(e: FormEvent) {
     e.preventDefault();
@@ -85,6 +97,21 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleDeleteWorker(id: string) {
+    setError(null);
+    setDeletingWorkerId(id);
+    try {
+      await apiFetch(`/api/workers/${id}`, { method: "DELETE" });
+      setWorkers((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete worker");
+    } finally {
+      setDeletingWorkerId(null);
+    }
+  }
+
+  const unregisteredWorkers = workers.filter((w) => w.user_id == null);
+
   if (loading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
@@ -115,18 +142,18 @@ export default function SettingsPage() {
           מערכות
         </h2>
         <div className="p-4">
-          <form onSubmit={handleAddSystem} className="flex gap-2">
+          <form onSubmit={handleAddSystem} className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
               value={newSystemName}
               onChange={(e) => setNewSystemName(e.target.value)}
               placeholder="שם מערכת חדשה"
-              className="flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             />
             <button
               type="submit"
               disabled={addingSystem || !newSystemName.trim()}
-              className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+              className="cursor-pointer min-h-[44px] shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
             >
               {addingSystem ? "מוסיף..." : "הוסף מערכת"}
             </button>
@@ -141,15 +168,47 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
         <h2 className="border-b border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
+          כוננים שטרם נרשמו
+        </h2>
+        <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
+          {unregisteredWorkers.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-zinc-500 dark:text-zinc-400">
+              אין כוננים שטרם נרשמו.
+            </li>
+          ) : (
+            unregisteredWorkers.map((w) => (
+              <li
+                key={w.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
+              >
+                <span className="min-w-0 flex-1 font-medium text-zinc-900 dark:text-zinc-100">
+                  {w.full_name ?? "ללא שם"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteWorker(w.id)}
+                  disabled={deletingWorkerId === w.id}
+                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
+                >
+                  {deletingWorkerId === w.id ? "מוחק..." : "מחק כונן"}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
+        <h2 className="border-b border-zinc-200 px-4 py-3 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
           משתמשים ומנהלים
         </h2>
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
           {profiles.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between px-4 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
                   {p.full_name ?? p.email ?? "ללא שם"}
                 </span>
@@ -169,7 +228,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => handlePromote(p.id)}
                   disabled={!!promotingId}
-                  className="cursor-pointer rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
                 >
                   {promotingId === p.id ? "מעדכן..." : "הפוך למנהל"}
                 </button>

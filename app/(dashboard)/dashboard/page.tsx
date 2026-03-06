@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAssignments } from "@/contexts/AssignmentsContext";
 import { useProfile } from "@/contexts/ProfileContext";
@@ -31,7 +31,7 @@ function getCurrentWeekDates(): string[] {
 }
 
 export default function DashboardPage() {
-  const { overview, loading, error, load } = useAssignments();
+  const { overview, loading, error, load, selectedBoardId, setSelectedBoardId } = useAssignments();
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const weekDates = useMemo(() => getCurrentWeekDates(), []);
@@ -42,17 +42,24 @@ export default function DashboardPage() {
     if (!overview) void load();
   }, []);
 
+  // סינון משמרות לפי לוח נבחר – כולם יכולים לעבור בין הלוחות
+  const shiftsFiltered = useMemo(() => {
+    const shifts = overview?.shifts ?? [];
+    if (!selectedBoardId) return shifts;
+    return shifts.filter((s) => s.board_id === selectedBoardId);
+  }, [overview?.shifts, selectedBoardId]);
+
   const shiftsByDateType = useMemo(() => {
     const map: Record<string, { day?: Shift; night?: Shift }> = {};
-    overview?.shifts.forEach((s) => {
+    shiftsFiltered.forEach((s) => {
       if (!map[s.date]) map[s.date] = {};
       map[s.date][s.type as "day" | "night"] = s;
     });
     return map;
-  }, [overview]);
+  }, [shiftsFiltered]);
 
   const stats = useMemo(() => {
-    const shifts = overview?.shifts ?? [];
+    const shifts = shiftsFiltered;
     const assignments = overview?.assignments ?? [];
     // worker_id – אם מנהל בחר עובד: העובד הנבחר. אחרת: המשתמש המחובר
     const targetWorkerId =
@@ -82,7 +89,7 @@ export default function DashboardPage() {
       };
     });
     return { dayCount, nightCount, assignmentsCount, targetWorkerId, byDay };
-  }, [overview, weekDates, profile, selectedWorkerId]);
+  }, [overview, weekDates, profile, selectedWorkerId, shiftsFiltered]);
 
   const workersById = useMemo(() => {
     const map: Record<string, { full_name: string | null }> = {};
@@ -92,9 +99,22 @@ export default function DashboardPage() {
     return map;
   }, [overview]);
 
-  function getAssignmentsForShift(shiftId: string) {
-    return overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [];
-  }
+  const getAssignmentsForShift = useCallback(
+    (shiftId: string) =>
+      overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [],
+    [overview?.assignments],
+  );
+
+  const handleBoardChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) =>
+      setSelectedBoardId(e.target.value || null),
+    [setSelectedBoardId],
+  );
+  const handleWorkerChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) =>
+      setSelectedWorkerId(e.target.value || null),
+    [],
+  );
 
   if (loading) {
     return (
@@ -115,10 +135,12 @@ export default function DashboardPage() {
     );
   }
 
+  const boards = overview?.boards ?? [];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-row flex-wrap items-end gap-2 sm:gap-3 sm:justify-between">
+        <div className="min-w-0 shrink-0">
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             דשבורד
           </h1>
@@ -126,14 +148,35 @@ export default function DashboardPage() {
             סקירה וסטטיסטיקות לשבוע הנוכחי
           </p>
         </div>
-        {isManager && overview?.workers && overview.workers.length > 0 && (
+        <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0">
+          {boards.length > 0 && (
+            <div className="flex flex-col items-center space-y-1">
+              <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                לוח שיבוצים
+              </label>
+              <select
+                value={selectedBoardId ?? ""}
+                onChange={handleBoardChange}
+                className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              >
+                <option value="">כל הלוחות</option>
+                {boards.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : " (אדם יחיד)"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {isManager && overview?.workers && overview.workers.length > 0 && (
           <div className="flex flex-col items-center space-y-1">
             <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
               צפייה בסיכום שיבוצים של
             </label>
             <select
               value={selectedWorkerId ?? ""}
-              onChange={(e) => setSelectedWorkerId(e.target.value || null)}
+              onChange={handleWorkerChange}
               className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             >
               <option value="">אני (המשתמש המחובר)</option>
@@ -147,29 +190,30 @@ export default function DashboardPage() {
                 ))}
             </select>
           </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">משמרות יום</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs">משמרות יום</p>
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
             {stats.dayCount}
           </p>
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">משמרות לילה</p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs">משמרות לילה</p>
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
             {stats.nightCount}
           </p>
         </div>
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <p className="truncate text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs" title={stats.targetWorkerId ? `שיבוצים של ${workersById[stats.targetWorkerId]?.full_name ?? "נבחר"}` : "השיבוצים שלי"}>
             {stats.targetWorkerId
-              ? `שיבוצים של ${workersById[stats.targetWorkerId]?.full_name ?? "נבחר"} (יום + לילה)`
-              : "השיבוצים שלי (יום + לילה)"}
+              ? `שיבוצים של ${workersById[stats.targetWorkerId]?.full_name ?? "נבחר"}`
+              : "השיבוצים שלי"}
           </p>
-          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
             {stats.assignmentsCount}
           </p>
         </div>
@@ -179,8 +223,8 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
           שיבוצים לפי יום – השבוע
         </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[400px] text-sm">
+        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[320px] text-sm">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-700">
                 <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">יום</th>
