@@ -6,7 +6,8 @@ import type { System } from "@/lib/utils/interfaces";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [systemId, setSystemId] = useState<string>("");
@@ -41,7 +42,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           email,
           password,
-          full_name: fullName || undefined,
+          full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           system_id: systemId || undefined,
         }),
       });
@@ -86,22 +87,37 @@ export default function SignupPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-zinc-300">
-                  שם מלא
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
-                  placeholder="השם המלא שלך"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    שם פרטי <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
+                    placeholder="שם פרטי"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    שם משפחה <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-clear]:hidden"
+                    placeholder="שם משפחה"
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-zinc-300">
-                  אימייל
+                  אימייל <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="email"
@@ -115,7 +131,7 @@ export default function SignupPage() {
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-zinc-300">
-                  סיסמה
+                  סיסמה <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="password"
@@ -129,7 +145,7 @@ export default function SignupPage() {
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-zinc-300">
-                  מערכת
+                  מערכת <span className="text-red-400">*</span>
                 </label>
                 <select
                   value={systemId}
