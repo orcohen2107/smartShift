@@ -33,6 +33,10 @@ export default function AssignmentsPage() {
   } = useAssignments();
 
   const profile = useProfile();
+  const todayStr = useMemo(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  }, []);
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
     date: "",
     type: ShiftType.Day,
@@ -73,22 +77,6 @@ export default function AssignmentsPage() {
   useEffect(() => {
     if (!overview) void load();
   }, []);
-
-  // קפיצה לשבוע שמכיל משמרות אם בשבוע הנוכחי אין כלום
-  const weekDatesForCheck = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
-  useEffect(() => {
-    if (!overview?.shifts?.length) return;
-    const filtered = selectedBoardId
-      ? overview.shifts.filter((s) => s.board_id === selectedBoardId)
-      : overview.shifts;
-    if (filtered.length === 0) return;
-    const weekSet = new Set(weekDatesForCheck);
-    const hasShiftInWeek = filtered.some((s) => weekSet.has(s.date));
-    if (!hasShiftInWeek) {
-      const firstDate = filtered.map((s) => s.date).sort()[0];
-      if (firstDate) setWeekOffset(getWeekOffsetForDate(firstDate));
-    }
-  }, [overview?.shifts, selectedBoardId, weekDatesForCheck]);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {
@@ -367,21 +355,6 @@ export default function AssignmentsPage() {
       );
     }
     return out;
-  }
-
-  /** מחזיר איזה weekOffset יציג את השבוע שמכיל את התאריך dateStr */
-  function getWeekOffsetForDate(dateStr: string): number {
-    const today = new Date();
-    const currentStart = new Date(today);
-    currentStart.setDate(today.getDate() - today.getDay());
-    currentStart.setHours(0, 0, 0, 0);
-    const [y, m, d] = dateStr.split("-").map(Number);
-    const target = new Date(y, m - 1, d);
-    const targetStart = new Date(target);
-    targetStart.setDate(target.getDate() - target.getDay());
-    targetStart.setHours(0, 0, 0, 0);
-    const diffMs = targetStart.getTime() - currentStart.getTime();
-    return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
   }
 
   const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -671,6 +644,7 @@ export default function AssignmentsPage() {
             <input
               type="date"
               required
+              min={todayStr}
               value={createShiftForm.date}
               onChange={(e) =>
                 setCreateShiftForm((prev) => ({
