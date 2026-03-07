@@ -43,6 +43,10 @@ export default function ConstraintsPage() {
   const { constraints: items, setConstraints: setItems, systemMembers, loading, error, setError, load, hasCachedData } = useConstraints();
 
   const defaultRange = useMemo(() => getCurrentWeekRange(), []);
+  const todayStr = useMemo(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  }, []);
   const [fromDate, setFromDate] = useState<string>(defaultRange.from);
   const [toDate, setToDate] = useState<string>(defaultRange.to);
   const [filterWorkerId, setFilterWorkerId] = useState<string>("");
@@ -175,6 +179,7 @@ export default function ConstraintsPage() {
             <input
               type="date"
               required
+              min={todayStr}
               value={form.date}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, date: e.target.value }))
