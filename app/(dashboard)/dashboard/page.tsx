@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAssignments } from "@/contexts/AssignmentsContext";
 import { useProfile } from "@/contexts/ProfileContext";
-import type { Shift } from "@/lib/utils/interfaces";
+import type { Shift, Worker } from "@/lib/utils/interfaces";
 import { Role, ShiftType } from "@/lib/utils/enums";
 
 const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -93,12 +93,25 @@ export default function DashboardPage() {
   }, [overview, weekDates, profile, selectedWorkerId, shiftsFiltered]);
 
   const workersById = useMemo(() => {
-    const map: Record<string, { full_name: string | null }> = {};
+    const map: Record<string, Worker> = {};
     overview?.workers.forEach((w) => {
-      map[w.id] = { full_name: w.full_name };
+      map[w.id] = w;
     });
     return map;
   }, [overview]);
+
+  /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
+  const workersSorted = useMemo(() => {
+    const list: Worker[] = [...(overview?.workers ?? [])];
+    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? "").trim();
+    return list.sort((a, b) => {
+      if (a.is_reserves !== b.is_reserves) return a.is_reserves ? 1 : -1;
+      return name(a).localeCompare(name(b), "he");
+    });
+  }, [overview?.workers]);
+
+  const workerDisplayName = (w: Partial<Worker> | undefined) =>
+    w ? `${w.full_name ?? w.email ?? w.id ?? "—"}${w.is_reserves ? " (מילואים)" : ""}` : "—";
 
   const getAssignmentsForShift = useCallback(
     (shiftId: string) =>
@@ -181,11 +194,11 @@ export default function DashboardPage() {
               className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             >
               <option value="">אני (המשתמש המחובר)</option>
-              {overview.workers
+              {workersSorted
                 .filter((w) => w.user_id !== profile?.id && w.id !== profile?.id)
                 .map((w) => (
                   <option key={w.id} value={w.id}>
-                    {w.full_name ?? w.email ?? w.id}
+                    {workerDisplayName(w)}
                     {!w.user_id ? " (טרם נרשם)" : ""}
                   </option>
                 ))}
@@ -209,9 +222,9 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="truncate text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs" title={stats.targetWorkerId ? `שיבוצים של ${workersById[stats.targetWorkerId]?.full_name ?? "נבחר"}` : "השיבוצים שלי"}>
+          <p className="truncate text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs" title={stats.targetWorkerId ? `שיבוצים של ${workerDisplayName(workersById[stats.targetWorkerId])}` : "השיבוצים שלי"}>
             {stats.targetWorkerId
-              ? `שיבוצים של ${workersById[stats.targetWorkerId]?.full_name ?? "נבחר"}`
+              ? `שיבוצים של ${workerDisplayName(workersById[stats.targetWorkerId])}`
               : "השיבוצים שלי"}
           </p>
           <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
@@ -251,7 +264,7 @@ export default function DashboardPage() {
                     <td className="p-2">
                       {assignDay.length > 0 ? (
                         <span className="text-xs">
-                          {assignDay.map((a) => workersById[a.worker_id]?.full_name ?? "—").join(", ")}
+                          {assignDay.map((a) => workerDisplayName(workersById[a.worker_id])).join(", ")}
                         </span>
                       ) : (
                         <span className="text-zinc-400">—</span>
@@ -260,7 +273,7 @@ export default function DashboardPage() {
                     <td className="p-2">
                       {assignNight.length > 0 ? (
                         <span className="text-xs">
-                          {assignNight.map((a) => workersById[a.worker_id]?.full_name ?? "—").join(", ")}
+                          {assignNight.map((a) => workerDisplayName(workersById[a.worker_id])).join(", ")}
                         </span>
                       ) : (
                         <span className="text-zinc-400">—</span>

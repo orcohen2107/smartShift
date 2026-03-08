@@ -6,6 +6,8 @@ export interface SignupBody {
   password: string;
   full_name?: string;
   system_id?: string;
+  /** מילואים – ברירת מחדל false */
+  is_reserves?: boolean;
 }
 
 /** Request body for POST /api/systems */

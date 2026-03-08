@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [systemId, setSystemId] = useState<string>("");
+  const [isReserves, setIsReserves] = useState(false);
   const [systems, setSystems] = useState<System[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export default function SignupPage() {
           password,
           full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           system_id: systemId || undefined,
+          is_reserves: isReserves,
         }),
       });
 
@@ -158,6 +160,19 @@ export default function SignupPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_reserves"
+                  checked={isReserves}
+                  onChange={(e) => setIsReserves(e.target.checked)}
+                  className="h-4 w-4 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-400/40"
+                />
+                <label htmlFor="is_reserves" className="cursor-pointer text-sm text-zinc-300">
+                  איש מילואים              
+                </label>
               </div>
 
               {error && (

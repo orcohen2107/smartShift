@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     (userData.user.user_metadata?.full_name as string)?.trim() || email;
   const systemId =
     (userData.user.user_metadata?.system_id as string) || null;
+  const isReserves = userData.user.user_metadata?.is_reserves === true;
 
   // Check if profile already exists.
   const { data: existingProfile, error: profileError } = await supabase
@@ -44,12 +45,14 @@ export async function POST(req: Request) {
       .eq("id", profile.id)
       .maybeSingle();
     if (!existingWorker) {
+      const profileWithReserves = profile as Profile & { is_reserves?: boolean };
       const { error: workerInsertErr } = await admin.from("workers").insert({
         id: profile.id,
         full_name: profile.full_name,
         email: profile.email,
         user_id: profile.id,
         system_id: profile.system_id ?? null,
+        is_reserves: profileWithReserves.is_reserves ?? false,
       });
       if (workerInsertErr) {
         return NextResponse.json(
@@ -91,6 +94,7 @@ export async function POST(req: Request) {
       email: email || null,
       role,
       system_id: finalSystemId,
+      is_reserves: isReserves,
     })
     .select("*")
     .single();
@@ -120,7 +124,7 @@ export async function POST(req: Request) {
   if (toLink?.id) {
     const { error: updateErr } = await admin
       .from("workers")
-      .update({ user_id: userId, email: email || null })
+      .update({ user_id: userId, email: email || null, is_reserves: isReserves })
       .eq("id", toLink.id);
     if (updateErr) {
       return NextResponse.json(
@@ -136,6 +140,7 @@ export async function POST(req: Request) {
       email: email ?? null,
       user_id: userId,
       system_id: profileSystemId,
+      is_reserves: isReserves,
     });
     if (workerInsertErr) {
       return NextResponse.json(

@@ -14,6 +14,7 @@ export interface Profile {
   email: string | null;
   role: Role;
   system_id: string | null;
+  is_reserves: boolean;
   created_at: string;
 }
 
@@ -24,6 +25,7 @@ export interface Worker {
   email: string | null;
   user_id: string | null;
   system_id: string | null;
+  is_reserves: boolean;
   created_at: string;
 }
 

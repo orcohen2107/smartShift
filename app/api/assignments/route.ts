@@ -104,7 +104,7 @@ export async function GET(req: Request) {
   const workerIds = new Set((allWorkers ?? []).map((w) => w.id));
 
   // סנכרון: כל פרופיל במערכת חייב שורת worker כדי להופיע בשיבוץ (מי שהתחבר וטרם רץ ensure)
-  let profilesQuery = admin.from("profiles").select("id, full_name, email, system_id");
+  let profilesQuery = admin.from("profiles").select("id, full_name, email, system_id, is_reserves");
   if (systemId) {
     profilesQuery = profilesQuery.eq("system_id", systemId);
   } else {
@@ -119,6 +119,7 @@ export async function GET(req: Request) {
       email: p.email ?? null,
       user_id: p.id,
       system_id: p.system_id ?? null,
+      is_reserves: (p as { is_reserves?: boolean }).is_reserves ?? false,
     });
     if (!syncErr) workerIds.add(p.id);
     // אם כפילות או שגיאה אחרת – ממשיכים, השליפה המחודשת תכלול את כולם
