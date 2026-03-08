@@ -38,21 +38,21 @@ export async function POST(req: Request) {
   }
 
   if (existingProfile) {
-    const profile = existingProfile as Profile & { system_id?: string | null };
+    const profile = existingProfile as Profile & { system_id?: string | null; is_reserves?: boolean };
     const { data: existingWorker } = await admin
       .from("workers")
       .select("id")
       .eq("id", profile.id)
       .maybeSingle();
     if (!existingWorker) {
-      const profileWithReserves = profile as Profile & { is_reserves?: boolean };
-      const { error: workerInsertErr } = await admin.from("workers").insert({
+      // Insert עם client של המשתמש – RLS policy "Workers: user can insert own row" מאפשר
+      const { error: workerInsertErr } = await supabase.from("workers").insert({
         id: profile.id,
         full_name: profile.full_name,
         email: profile.email,
         user_id: profile.id,
         system_id: profile.system_id ?? null,
-        is_reserves: profileWithReserves.is_reserves ?? false,
+        is_reserves: profile.is_reserves ?? false,
       });
       if (workerInsertErr) {
         return NextResponse.json(
@@ -122,7 +122,8 @@ export async function POST(req: Request) {
 
   const toLink = unlinkedWorkers?.[0];
   if (toLink?.id) {
-    const { error: updateErr } = await admin
+    // עדכון עם client של המשתמש – RLS "claim self when user_id is null" מאפשר
+    const { error: updateErr } = await supabase
       .from("workers")
       .update({ user_id: userId, email: email || null, is_reserves: isReserves })
       .eq("id", toLink.id);
@@ -133,8 +134,8 @@ export async function POST(req: Request) {
       );
     }
   } else {
-    // פרופיל חדש (מנהל או כונן) – מוסיפים גם ל-workers כדי שיופיעו ברשימת השיבוץ (admin כי RLS מאפשר רק למנהל להוסיף)
-    const { error: workerInsertErr } = await admin.from("workers").insert({
+    // פרופיל חדש – הוספת worker עם client של המשתמש (RLS "user can insert own row")
+    const { error: workerInsertErr } = await supabase.from("workers").insert({
       id: userId,
       full_name: fullName,
       email: email ?? null,
