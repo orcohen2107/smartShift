@@ -101,21 +101,63 @@ export async function GET(req: Request) {
     );
   }
 
+  const workerIds = new Set((allWorkers ?? []).map((w) => w.id));
+
+  // סנכרון: כל פרופיל במערכת חייב שורת worker כדי להופיע בשיבוץ (מי שהתחבר וטרם רץ ensure)
+  let profilesQuery = admin.from("profiles").select("id, full_name, email, system_id");
+  if (systemId) {
+    profilesQuery = profilesQuery.eq("system_id", systemId);
+  } else {
+    profilesQuery = profilesQuery.is("system_id", null);
+  }
+  const { data: systemProfiles } = await profilesQuery;
+  for (const p of systemProfiles ?? []) {
+    if (workerIds.has(p.id)) continue;
+    const { error: syncErr } = await admin.from("workers").insert({
+      id: p.id,
+      full_name: p.full_name ?? "",
+      email: p.email ?? null,
+      user_id: p.id,
+      system_id: p.system_id ?? null,
+    });
+    if (!syncErr) workerIds.add(p.id);
+    // אם כפילות או שגיאה אחרת – ממשיכים, השליפה המחודשת תכלול את כולם
+  }
+
+  // שליפה מחדש אחרי סנכרון כדי לכלול כוננים חדשים
+  let workersFinalQuery = admin
+    .from("workers")
+    .select("*")
+    .order("full_name", { ascending: true });
+  if (systemId) {
+    workersFinalQuery = workersFinalQuery.eq("system_id", systemId);
+  } else {
+    workersFinalQuery = workersFinalQuery.is("system_id", null);
+  }
+  const { data: workersFinal, error: workersFinalErr } = await workersFinalQuery;
+  if (workersFinalErr) {
+    return NextResponse.json(
+      { error: workersFinalErr.message },
+      { status: 500 },
+    );
+  }
+  const allWorkersSynced = workersFinal ?? allWorkers ?? [];
+
   const dates = Array.from(new Set((shifts ?? []).map((s) => s.date)));
   const typesFilter = allTypes ? ["day", "night", "full_day"] : type ? [type] : ["day", "night", "full_day"];
 
   // אילוצים של עובדי המערכת בלבד
-  const systemWorkerIds = new Set((allWorkers ?? []).map((w) => w.id));
+  const systemWorkerIds = new Set(allWorkersSynced.map((w) => w.id));
   const assignments = (rawAssignments ?? []).filter((a) => systemWorkerIds.has(a.worker_id));
 
-  const workerIds = (allWorkers ?? []).map((w) => w.id);
+  const workerIdsForConstraints = allWorkersSynced.map((w) => w.id);
   let constraintsQuery = supabase
     .from("constraints")
     .select("*")
     .in("date", dates.length ? dates : ["1900-01-01"])
     .in("type", typesFilter);
-  if (workerIds.length > 0) {
-    constraintsQuery = constraintsQuery.in("worker_id", workerIds);
+  if (workerIdsForConstraints.length > 0) {
+    constraintsQuery = constraintsQuery.in("worker_id", workerIdsForConstraints);
   } else {
     constraintsQuery = constraintsQuery.eq("worker_id", "00000000-0000-0000-0000-000000000000");
   }
@@ -149,7 +191,7 @@ export async function GET(req: Request) {
   const payload: AssignmentsOverview = {
     shifts: (shifts ?? []) as Shift[],
     assignments: assignments as Assignment[],
-    workers: (allWorkers ?? []) as Worker[],
+    workers: allWorkersSynced as Worker[],
     constraints: (constraints ?? []) as Constraint[],
     boards: (boards ?? []) as ShiftBoard[],
   };

@@ -73,10 +73,10 @@ export default function AssignmentsPage() {
     }
   }, [profile, router]);
 
-  // טעינה רק בכניסה ראשונה (אין cache) – מעבר בין טאבים משתמש ב-cache
+  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
-    if (!overview) void load();
-  }, []);
+    void load();
+  }, [load]);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {

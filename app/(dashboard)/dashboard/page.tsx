@@ -38,9 +38,10 @@ export default function DashboardPage() {
 
   const isManager = profile?.role === Role.Manager;
 
+  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
-    if (!overview) void load();
-  }, []);
+    void load();
+  }, [load]);
 
   // סינון משמרות לפי לוח נבחר – כולם יכולים לעבור בין הלוחות
   const shiftsFiltered = useMemo(() => {
