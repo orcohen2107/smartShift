@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useCallback, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
 import { apiFetch } from "@/lib/api/apiFetch";
@@ -22,6 +22,19 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // אם יש כבר session (למשל מלינק אימות מייל) – ensure והפניה ל-dashboard
+  useEffect(() => {
+    const supabase = getSupabaseBrowser();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCheckingSession(false);
+      if (!session) return;
+      apiFetch<EnsureProfileResponse>("/api/profile/ensure", { method: "POST" })
+        .then(() => router.replace("/dashboard"))
+        .catch(() => { /* session אולי לא תקף – נשארים בטופס */ });
+    });
+  }, [router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -51,6 +64,14 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+        <p className="text-sm text-zinc-400">טוען...</p>
+      </div>
+    );
   }
 
   return (

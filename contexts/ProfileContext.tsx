@@ -22,7 +22,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     apiFetch<{ profile: Profile }>("/api/profile/me")
       .then((data) => setProfile(data.profile))
-      .catch(() => setProfile(null));
+      .catch(async () => {
+        try {
+          await apiFetch<{ profile: Profile }>("/api/profile/ensure", {
+            method: "POST",
+          });
+          const data = await apiFetch<{ profile: Profile }>("/api/profile/me");
+          setProfile(data.profile);
+        } catch {
+          setProfile(null);
+        }
+      });
   }, []);
 
   const value: ProfileContextValue = { profile };

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/db/supabaseServer';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import { getAccessTokenFromRequest } from '@/lib/auth/authHeader';
 import type { Profile } from '@/lib/utils/interfaces';
 
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
   }
 
   const supabase = getSupabaseServer({ accessToken });
+  const admin = getSupabaseAdmin();
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) {
@@ -22,6 +24,7 @@ export async function POST(req: Request) {
     (userData.user.user_metadata?.full_name as string)?.trim() || email;
   const systemId =
     (userData.user.user_metadata?.system_id as string) || null;
+  const isReserves = userData.user.user_metadata?.is_reserves === true;
 
   // Check if profile already exists.
   const { data: existingProfile, error: profileError } = await supabase
@@ -36,19 +39,27 @@ export async function POST(req: Request) {
 
   if (existingProfile) {
     const profile = existingProfile as Profile & { system_id?: string | null };
-    const { data: existingWorker } = await supabase
+    const { data: existingWorker } = await admin
       .from("workers")
       .select("id")
       .eq("id", profile.id)
       .maybeSingle();
     if (!existingWorker) {
-      await supabase.from("workers").insert({
+      const profileWithReserves = profile as Profile & { is_reserves?: boolean };
+      const { error: workerInsertErr } = await admin.from("workers").insert({
         id: profile.id,
         full_name: profile.full_name,
         email: profile.email,
         user_id: profile.id,
         system_id: profile.system_id ?? null,
+        is_reserves: profileWithReserves.is_reserves ?? false,
       });
+      if (workerInsertErr) {
+        return NextResponse.json(
+          { error: `Worker creation failed: ${workerInsertErr.message}` },
+          { status: 500 },
+        );
+      }
     }
     return NextResponse.json({ profile });
   }
@@ -83,6 +94,7 @@ export async function POST(req: Request) {
       email: email || null,
       role,
       system_id: finalSystemId,
+      is_reserves: isReserves,
     })
     .select("*")
     .single();
@@ -97,7 +109,7 @@ export async function POST(req: Request) {
   const profileSystemId = (inserted as { system_id?: string | null })?.system_id ?? null;
 
   // קישור worker קיים (שנוסף ידנית) לפי שם דומה ומערכת – מעדכן אימייל ו-user_id
-  let toLinkQuery = supabase
+  let toLinkQuery = admin
     .from("workers")
     .select("id")
     .is("user_id", null)
@@ -110,19 +122,32 @@ export async function POST(req: Request) {
 
   const toLink = unlinkedWorkers?.[0];
   if (toLink?.id) {
-    await supabase
+    const { error: updateErr } = await admin
       .from("workers")
-      .update({ user_id: userId, email: email || null })
+      .update({ user_id: userId, email: email || null, is_reserves: isReserves })
       .eq("id", toLink.id);
+    if (updateErr) {
+      return NextResponse.json(
+        { error: `Worker link failed: ${updateErr.message}` },
+        { status: 500 },
+      );
+    }
   } else {
-    // פרופיל חדש (מנהל או כונן) – מוסיפים גם ל-workers כדי שיופיעו ברשימת השיבוץ
-    await supabase.from("workers").insert({
+    // פרופיל חדש (מנהל או כונן) – מוסיפים גם ל-workers כדי שיופיעו ברשימת השיבוץ (admin כי RLS מאפשר רק למנהל להוסיף)
+    const { error: workerInsertErr } = await admin.from("workers").insert({
       id: userId,
       full_name: fullName,
-      email: email || null,
+      email: email ?? null,
       user_id: userId,
       system_id: profileSystemId,
+      is_reserves: isReserves,
     });
+    if (workerInsertErr) {
+      return NextResponse.json(
+        { error: `Worker creation failed: ${workerInsertErr.message}` },
+        { status: 500 },
+      );
+    }
   }
 
   return NextResponse.json({ profile: inserted as Profile });

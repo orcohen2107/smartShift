@@ -73,10 +73,10 @@ export default function AssignmentsPage() {
     }
   }, [profile, router]);
 
-  // טעינה רק בכניסה ראשונה (אין cache) – מעבר בין טאבים משתמש ב-cache
+  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
-    if (!overview) void load();
-  }, []);
+    void load();
+  }, [load]);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {
@@ -97,6 +97,19 @@ export default function AssignmentsPage() {
     });
     return map;
   }, [overview]);
+
+  /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
+  const workersSorted = useMemo(() => {
+    const list = [...(overview?.workers ?? [])];
+    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? "").trim();
+    return list.sort((a, b) => {
+      if (a.is_reserves !== b.is_reserves) return a.is_reserves ? 1 : -1;
+      return name(a).localeCompare(name(b), "he");
+    });
+  }, [overview?.workers]);
+
+  const workerDisplayName = (w: Worker | undefined) =>
+    w ? `${w.full_name ?? w.email ?? w.id ?? "—"}${w.is_reserves ? " (מילואים)" : ""}` : "—";
 
   const constraintsByWorkerDateType: Record<string, Constraint[]> = useMemo(() => {
     const map: Record<string, Constraint[]> = {};
@@ -685,9 +698,9 @@ export default function AssignmentsPage() {
               className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             >
               <option value="">ללא שיבוץ התחלתי</option>
-              {overview?.workers.map((w) => (
+              {workersSorted.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.full_name ?? w.email ?? w.id}
+                  {workerDisplayName(w)}
                   {!w.user_id ? " (טרם נרשם)" : ""}
                 </option>
               ))}
@@ -800,7 +813,7 @@ export default function AssignmentsPage() {
                                 className="flex items-center justify-between gap-1 text-xs"
                               >
                                 <span className="inline-flex items-center gap-1">
-                                  {w?.full_name ?? "—"}
+                                  {workerDisplayName(w)}
                                   {hasConstraint && (
                                     <span
                                       className="inline-flex shrink-0 text-amber-500"
@@ -899,9 +912,9 @@ export default function AssignmentsPage() {
                   defaultValue=""
                 >
                   <option value="">בחירת כונן…</option>
-                  {overview?.workers.map((w) => (
+                  {workersSorted.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.full_name ?? w.id}
+                      {workerDisplayName(w)}
                     </option>
                   ))}
                 </select>
@@ -978,7 +991,7 @@ export default function AssignmentsPage() {
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="inline-flex items-center gap-1 font-medium text-zinc-900 dark:text-zinc-100">
-                                    {worker?.full_name ?? "כונן"}
+                                    {workerDisplayName(worker)}
                                     {hasConstraint && (
                                       <span
                                         className="inline-flex shrink-0 text-amber-500"
@@ -1030,7 +1043,7 @@ export default function AssignmentsPage() {
                         defaultValue=""
                       >
                         <option value="">בחירת כונן…</option>
-                        {overview?.workers.map((w) => {
+                        {workersSorted.map((w) => {
                           const unavailable = hasUnavailableConstraint(
                             w.user_id ?? null,
                             shift.date,
@@ -1038,7 +1051,7 @@ export default function AssignmentsPage() {
                           );
                           return (
                             <option key={w.id} value={w.id}>
-                              {w.full_name ?? w.id}
+                              {workerDisplayName(w)}
                               {!w.user_id ? " (טרם נרשם)" : ""}
                               {unavailable ? " (לא זמין)" : ""}
                             </option>
