@@ -56,6 +56,8 @@ export interface Constraint {
   status: ConstraintStatus;
   note: string | null;
   created_at: string;
+  /** קבוצת מחזור – אילוצים עם אותו group נוצרו יחד כמחזור */
+  recurring_group_id?: string | null;
   /** שם בעל האילוץ – מגיע מה-API כשמנהל צופה באילוצים של כולם */
   worker_name?: string | null;
 }

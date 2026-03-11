@@ -66,10 +66,12 @@ export async function DELETE(
 
   const { supabase, profile } = res;
   const { id } = await params;
+  const url = new URL(req.url);
+  const deleteSeries = url.searchParams.get("series") === "1";
 
   const { data: existing, error: fetchError } = await supabase
     .from("constraints")
-    .select("*")
+    .select("id, worker_id, recurring_group_id")
     .eq("id", id)
     .single();
 
@@ -81,8 +83,33 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // שימוש ב-admin client כדי לעקוף RLS – כבר אומת שהמשתמש רשאי למחוק
   const admin = getSupabaseAdmin();
+
+  if (deleteSeries && (existing as { recurring_group_id?: string | null }).recurring_group_id) {
+    const groupId = (existing as { recurring_group_id: string }).recurring_group_id;
+    const { data: toDelete, error: listErr } = await admin
+      .from("constraints")
+      .select("id")
+      .eq("recurring_group_id", groupId)
+      .eq("worker_id", profile.id);
+    if (listErr || !toDelete?.length) {
+      return NextResponse.json(
+        { error: "Failed to find recurring constraints" },
+        { status: 500 },
+      );
+    }
+    const ids = toDelete.map((r) => r.id);
+    const { error } = await admin.from("constraints").delete().in("id", ids);
+    if (error) {
+      console.error("[DELETE /api/constraints/[id] series]", error);
+      return NextResponse.json(
+        { error: error.message ?? "Failed to delete constraints" },
+        { status: 500 },
+      );
+    }
+    return new Response(null, { status: 204 });
+  }
+
   const { error } = await admin.from("constraints").delete().eq("id", id);
 
   if (error) {
