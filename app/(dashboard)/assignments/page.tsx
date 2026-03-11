@@ -31,6 +31,7 @@ export default function AssignmentsPage() {
     setSelectedBoardId,
     load,
     updateOverview,
+    hasCachedData,
   } = useAssignments();
 
   const profile = useProfile();
@@ -76,10 +77,10 @@ export default function AssignmentsPage() {
     }
   }, [profile, router]);
 
-  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
+    if (hasCachedData || profile === null) return;
     void load();
-  }, [load]);
+  }, [hasCachedData, profile, load]);
 
   useEffect(() => {
     setMounted(true);
