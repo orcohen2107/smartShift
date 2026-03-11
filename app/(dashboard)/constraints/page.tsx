@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
 import { useConstraints } from "@/contexts/ConstraintsContext";
 import { useProfile } from "@/contexts/ProfileContext";
+import Checkbox from "@/components/Checkbox";
 import type { Constraint } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 
@@ -13,6 +14,8 @@ type ConstraintInput = {
   status: ConstraintStatus;
   note?: string;
 };
+
+const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 function formatDateHe(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
@@ -42,17 +45,28 @@ export default function ConstraintsPage() {
   const profile = useProfile();
   const { constraints: items, setConstraints: setItems, systemMembers, loading, error, setError, load, hasCachedData } = useConstraints();
 
-  const defaultRange = useMemo(() => getCurrentWeekRange(), []);
+  const [mounted, setMounted] = useState(false);
+  const defaultRange = useMemo(() => (mounted ? getCurrentWeekRange() : { from: "", to: "" }), [mounted]);
   const todayStr = useMemo(() => {
+    if (!mounted) return "";
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-  }, []);
-  const [fromDate, setFromDate] = useState<string>(defaultRange.from);
-  const [toDate, setToDate] = useState<string>(defaultRange.to);
+  }, [mounted]);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
   const [filterWorkerId, setFilterWorkerId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteChoiceConstraint, setDeleteChoiceConstraint] = useState<Constraint | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {setMounted(true)}, []);
+  useEffect(() => {
+    if (mounted && defaultRange.from && defaultRange.to) {
+      setFromDate(defaultRange.from);
+      setToDate(defaultRange.to);
+    }
+  }, [mounted, defaultRange.from, defaultRange.to]);
 
   const [form, setForm] = useState<ConstraintInput>({
     date: "",
@@ -60,6 +74,9 @@ export default function ConstraintsPage() {
     status: ConstraintStatus.Unavailable,
     note: "",
   });
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringDayOfWeek, setRecurringDayOfWeek] = useState(2); // שלישי
+  const [recurringEndDate, setRecurringEndDate] = useState<string>("");
 
   // טעינה רק בכניסה ראשונה (אין cache) – מנהל מקבל אילוצים של כולם עם שמות
   useEffect(() => {
@@ -104,16 +121,46 @@ export default function ConstraintsPage() {
     setSuccessMessage(null);
     setIsAdding(true);
     try {
-      const created = await apiFetch<Constraint>("/api/constraints", {
-        method: "POST",
-        json: form,
-      });
-      setForm((prev) => ({ ...prev, note: "" }));
-      setItems((prev) => [
-        ...prev,
-        { ...created, worker_name: created.worker_name ?? profile?.full_name ?? null },
-      ]);
-      setSuccessMessage("האילוץ נוסף בהצלחה");
+      if (isRecurring) {
+        const payload = {
+          recurring: true,
+          start_date: form.date,
+          day_of_week: recurringDayOfWeek,
+          end_date: recurringEndDate || null,
+          type: form.type,
+          status: form.status,
+          note: form.note || undefined,
+        };
+        const res = await apiFetch<{ created: Constraint[] }>("/api/constraints", {
+          method: "POST",
+          json: payload,
+        });
+        const created = res.created ?? [];
+        setForm((prev) => ({ ...prev, note: "" }));
+        setItems((prev) => [
+          ...prev,
+          ...created.map((c) => ({
+            ...c,
+            worker_name: c.worker_name ?? profile?.full_name ?? null,
+          })),
+        ]);
+        setSuccessMessage(
+          created.length > 0
+            ? `נוספו ${created.length} אילוצים מחזוריים`
+            : "האילוץ נוסף בהצלחה",
+        );
+      } else {
+        const created = await apiFetch<Constraint>("/api/constraints", {
+          method: "POST",
+          json: form,
+        });
+        setForm((prev) => ({ ...prev, note: "" }));
+        setItems((prev) => [
+          ...prev,
+          { ...created, worker_name: created.worker_name ?? profile?.full_name ?? null },
+        ]);
+        setSuccessMessage("האילוץ נוסף בהצלחה");
+      }
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err: unknown) {
       console.error(err);
@@ -121,7 +168,7 @@ export default function ConstraintsPage() {
     } finally {
       setIsAdding(false);
     }
-  }, [form, profile?.full_name, setItems, setError, setSuccessMessage]);
+  }, [form, isRecurring, recurringDayOfWeek, recurringEndDate, profile?.full_name, setItems, setError, setSuccessMessage]);
 
   const handleDelete = useCallback(async (id: string) => {
     setError(null);
@@ -142,6 +189,40 @@ export default function ConstraintsPage() {
     }
   }, [setItems, setError, setSuccessMessage]);
 
+  const handleDeleteSeries = useCallback(async (id: string) => {
+    setError(null);
+    setSuccessMessage(null);
+    setDeletingId(id);
+    setDeleteChoiceConstraint(null);
+    try {
+      await apiFetch<object>(`/api/constraints/${id}?series=1`, {
+        method: "DELETE",
+      });
+      const constraint = items.find((c) => c.id === id);
+      const groupId = constraint?.recurring_group_id;
+      if (groupId) {
+        setItems((prev) => prev.filter((c) => c.recurring_group_id !== groupId));
+      } else {
+        setItems((prev) => prev.filter((c) => c.id !== id));
+      }
+      setSuccessMessage("כל המחזור הוסר");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err: unknown) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Failed to delete series");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [items, setItems, setError, setSuccessMessage]);
+
+  const handleDeleteClick = useCallback((c: Constraint) => {
+    if (c.recurring_group_id) {
+      setDeleteChoiceConstraint(c);
+    } else {
+      void handleDelete(c.id);
+    }
+  }, [handleDelete]);
+
   const inputClass =
     "cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark] [color-scheme:light]";
   const dateInputClass =
@@ -160,6 +241,52 @@ export default function ConstraintsPage() {
           </div>
         </div>
       )}
+      {deleteChoiceConstraint && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-choice-title"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 id="delete-choice-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+              למחוק אילוץ?
+            </h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+              {formatDateHe(deleteChoiceConstraint.date)} · {deleteChoiceConstraint.type === ShiftType.Day ? "משמרת יום" : "משמרת לילה"}
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleDelete(deleteChoiceConstraint.id);
+                  setDeleteChoiceConstraint(null);
+                }}
+                disabled={deletingId === deleteChoiceConstraint.id}
+                className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              >
+                מחיקה חד-פעמית (רק תאריך זה)
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteSeries(deleteChoiceConstraint.id)}
+                disabled={deletingId === deleteChoiceConstraint.id}
+                className="cursor-pointer rounded-xl bg-red-500 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-600 disabled:opacity-60"
+              >
+                מחיקת כל המחזור
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteChoiceConstraint(null)}
+                disabled={!!deletingId}
+                className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           אילוצים
@@ -173,9 +300,19 @@ export default function ConstraintsPage() {
         onSubmit={handleCreate}
         className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="recurring"
+            label="מחזורי (לפי יום בשבוע)"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+          />
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           <div className="space-y-1">
-            <label className={labelClass}>תאריך</label>
+            <label className={labelClass}>
+              {isRecurring ? "תאריך התחלה" : "תאריך"}
+            </label>
             <input
               type="date"
               required
@@ -187,6 +324,40 @@ export default function ConstraintsPage() {
               className={dateInputClass}
             />
           </div>
+          {isRecurring && (
+            <>
+              <div className="space-y-1">
+                <label className={labelClass}>יום בשבוע</label>
+                <select
+                  value={recurringDayOfWeek}
+                  onChange={(e) =>
+                    setRecurringDayOfWeek(Number(e.target.value))
+                  }
+                  className={inputClass}
+                >
+                  {DAY_NAMES_HE.map((name, i) => (
+                    <option key={i} value={i}>
+                      כל {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className={labelClass}>תאריך סיום (אופציונלי)</label>
+                <input
+                  type="date"
+                  min={form.date || todayStr}
+                  value={recurringEndDate}
+                  onChange={(e) => setRecurringEndDate(e.target.value)}
+                  className={dateInputClass}
+                  placeholder="אם ריק – שנה קדימה"
+                />
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  אם לא בוחרים: אילוץ עד שנה מההתחלה
+                </p>
+              </div>
+            </>
+          )}
           <div className="space-y-1">
             <label className={labelClass}>סוג משמרת</label>
             <select
@@ -339,7 +510,7 @@ export default function ConstraintsPage() {
                   {isOwner && (
                     <button
                       type="button"
-                      onClick={() => handleDelete(c.id)}
+                      onClick={() => handleDeleteClick(c)}
                       disabled={deletingId === c.id}
                       className="cursor-pointer shrink-0 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 disabled:opacity-60"
                     >

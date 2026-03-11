@@ -12,6 +12,7 @@ import type {
   Worker,
 } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
+import Checkbox from "@/components/Checkbox";
 
 type CreateShiftInput = {
   date: string;
@@ -30,13 +31,16 @@ export default function AssignmentsPage() {
     setSelectedBoardId,
     load,
     updateOverview,
+    hasCachedData,
   } = useAssignments();
 
   const profile = useProfile();
+  const [mounted, setMounted] = useState(false);
   const todayStr = useMemo(() => {
+    if (!mounted) return "";
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-  }, []);
+  }, [mounted]);
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
     date: "",
     type: ShiftType.Day,
@@ -73,10 +77,14 @@ export default function AssignmentsPage() {
     }
   }, [profile, router]);
 
-  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
+    if (hasCachedData || profile === null) return;
     void load();
-  }, [load]);
+  }, [hasCachedData, profile, load]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {
@@ -451,19 +459,15 @@ export default function AssignmentsPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="singlePerson"
+                  label="אדם יחיד לכל היום"
                   checked={newBoardSinglePerson}
                   onChange={(e) => {
                     setNewBoardSinglePerson(e.target.checked);
                     if (e.target.checked) setNewBoardWorkersPerShift(1);
                   }}
-                  className="cursor-pointer rounded border-zinc-300"
                 />
-                <label htmlFor="singlePerson" className="cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
-                  אדם יחיד לכל היום
-                </label>
               </div>
               {!newBoardSinglePerson && (
                 <div className="space-y-1">

@@ -20,6 +20,7 @@ type AssignmentsContextValue = {
   setSelectedBoardId: (id: string | null) => void;
   load: () => Promise<void>;
   updateOverview: (updater: (prev: AssignmentsOverview) => AssignmentsOverview) => void;
+  hasCachedData: boolean;
 };
 
 const AssignmentsContext = createContext<AssignmentsContextValue | null>(null);
@@ -92,6 +93,7 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
       setSelectedBoardId,
       load,
       updateOverview,
+      hasCachedData: cachedOverview !== null,
     }),
     [overview, loading, error, selectedBoardId, setSelectedBoardId, load, updateOverview],
   );

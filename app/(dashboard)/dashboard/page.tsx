@@ -31,17 +31,23 @@ function getCurrentWeekDates(): string[] {
 }
 
 export default function DashboardPage() {
-  const { overview, loading, error, load, selectedBoardId, setSelectedBoardId } = useAssignments();
+  const { overview, loading, error, load, selectedBoardId, setSelectedBoardId, hasCachedData } = useAssignments();
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
-  const weekDates = useMemo(() => getCurrentWeekDates(), []);
+  const [mounted, setMounted] = useState(false);
+  const weekDates = useMemo(() => (mounted ? getCurrentWeekDates() : []), [mounted]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const isManager = profile?.role === Role.Manager;
 
-  // טעינה מחדש בכל כניסה לדף – כדי לראות כוננים חדשים שהתחברו בלי ריענון ידני
   useEffect(() => {
+    if (hasCachedData || profile === null) return;
     void load();
-  }, [load]);
+  }, [hasCachedData, profile, load]);
 
   // סינון משמרות לפי לוח נבחר – כולם יכולים לעבור בין הלוחות
   const shiftsFiltered = useMemo(() => {

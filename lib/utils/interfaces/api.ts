@@ -17,7 +17,16 @@ export interface SystemPostBody {
 
 /** Request body for POST /api/constraints */
 export interface ConstraintPostBody {
-  date: string;
+  /** תאריך בודד – חובה כשלא מחזורי */
+  date?: string;
+  /** אילוץ מחזורי לפי יום בשבוע */
+  recurring?: boolean;
+  /** תאריך התחלה למחזורי */
+  start_date?: string;
+  /** יום בשבוע 0–6 (0=ראשון) – למחזורי */
+  day_of_week?: number;
+  /** תאריך סיום למחזורי – אם לא נשלח: שנה מההתחלה */
+  end_date?: string | null;
   type: ShiftType;
   status?: ConstraintStatus;
   note?: string;
