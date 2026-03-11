@@ -34,7 +34,13 @@ export default function DashboardPage() {
   const { overview, loading, error, load, selectedBoardId, setSelectedBoardId } = useAssignments();
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
-  const weekDates = useMemo(() => getCurrentWeekDates(), []);
+  const [mounted, setMounted] = useState(false);
+  const weekDates = useMemo(() => (mounted ? getCurrentWeekDates() : []), [mounted]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const isManager = profile?.role === Role.Manager;
 

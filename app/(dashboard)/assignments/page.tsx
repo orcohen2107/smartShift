@@ -33,10 +33,12 @@ export default function AssignmentsPage() {
   } = useAssignments();
 
   const profile = useProfile();
+  const [mounted, setMounted] = useState(false);
   const todayStr = useMemo(() => {
+    if (!mounted) return "";
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-  }, []);
+  }, [mounted]);
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
     date: "",
     type: ShiftType.Day,
@@ -77,6 +79,10 @@ export default function AssignmentsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // סינון משמרות לפי לוח נבחר (client-side – אין בקשה נוספת)
   const shiftsFiltered: Shift[] = useMemo(() => {

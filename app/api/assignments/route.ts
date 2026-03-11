@@ -102,6 +102,10 @@ export async function GET(req: Request) {
   }
 
   const workerIds = new Set((allWorkers ?? []).map((w) => w.id));
+  const profileIdsWithWorker = new Set([
+    ...(allWorkers ?? []).map((w) => w.id),
+    ...(allWorkers ?? []).map((w) => w.user_id).filter(Boolean) as string[],
+  ]);
 
   // סנכרון: כל פרופיל במערכת חייב שורת worker כדי להופיע בשיבוץ (מי שהתחבר וטרם רץ ensure)
   let profilesQuery = admin.from("profiles").select("id, full_name, email, system_id, is_reserves");
@@ -112,7 +116,7 @@ export async function GET(req: Request) {
   }
   const { data: systemProfiles } = await profilesQuery;
   for (const p of systemProfiles ?? []) {
-    if (workerIds.has(p.id)) continue;
+    if (profileIdsWithWorker.has(p.id)) continue;
     const { error: syncErr } = await admin.from("workers").insert({
       id: p.id,
       full_name: p.full_name ?? "",
@@ -121,7 +125,10 @@ export async function GET(req: Request) {
       system_id: p.system_id ?? null,
       is_reserves: (p as { is_reserves?: boolean }).is_reserves ?? false,
     });
-    if (!syncErr) workerIds.add(p.id);
+    if (!syncErr) {
+      workerIds.add(p.id);
+      profileIdsWithWorker.add(p.id);
+    }
     // אם כפילות או שגיאה אחרת – ממשיכים, השליפה המחודשת תכלול את כולם
   }
 

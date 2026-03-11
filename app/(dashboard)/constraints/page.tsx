@@ -42,17 +42,27 @@ export default function ConstraintsPage() {
   const profile = useProfile();
   const { constraints: items, setConstraints: setItems, systemMembers, loading, error, setError, load, hasCachedData } = useConstraints();
 
-  const defaultRange = useMemo(() => getCurrentWeekRange(), []);
+  const [mounted, setMounted] = useState(false);
+  const defaultRange = useMemo(() => (mounted ? getCurrentWeekRange() : { from: "", to: "" }), [mounted]);
   const todayStr = useMemo(() => {
+    if (!mounted) return "";
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
-  }, []);
-  const [fromDate, setFromDate] = useState<string>(defaultRange.from);
-  const [toDate, setToDate] = useState<string>(defaultRange.to);
+  }, [mounted]);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
   const [filterWorkerId, setFilterWorkerId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {setMounted(true)}, []);
+  useEffect(() => {
+    if (mounted && defaultRange.from && defaultRange.to) {
+      setFromDate(defaultRange.from);
+      setToDate(defaultRange.to);
+    }
+  }, [mounted, defaultRange.from, defaultRange.to]);
 
   const [form, setForm] = useState<ConstraintInput>({
     date: "",
