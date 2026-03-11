@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api/apiFetch";
 import { useConstraints } from "@/contexts/ConstraintsContext";
 import { useProfile } from "@/contexts/ProfileContext";
+import Checkbox from "@/components/Checkbox";
 import type { Constraint } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 
@@ -300,16 +301,12 @@ export default function ConstraintsPage() {
         className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             id="recurring"
+            label="מחזורי (לפי יום בשבוע)"
             checked={isRecurring}
             onChange={(e) => setIsRecurring(e.target.checked)}
-            className="h-4 w-4 rounded border-zinc-400 text-emerald-500 focus:ring-emerald-400/40"
           />
-          <label htmlFor="recurring" className="cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            מחזורי (לפי יום בשבוע)
-          </label>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           <div className="space-y-1">

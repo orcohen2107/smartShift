@@ -12,6 +12,7 @@ import type {
   Worker,
 } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
+import Checkbox from "@/components/Checkbox";
 
 type CreateShiftInput = {
   date: string;
@@ -457,19 +458,15 @@ export default function AssignmentsPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="singlePerson"
+                  label="אדם יחיד לכל היום"
                   checked={newBoardSinglePerson}
                   onChange={(e) => {
                     setNewBoardSinglePerson(e.target.checked);
                     if (e.target.checked) setNewBoardWorkersPerShift(1);
                   }}
-                  className="cursor-pointer rounded border-zinc-300"
                 />
-                <label htmlFor="singlePerson" className="cursor-pointer text-sm text-zinc-700 dark:text-zinc-300">
-                  אדם יחיד לכל היום
-                </label>
               </div>
               {!newBoardSinglePerson && (
                 <div className="space-y-1">

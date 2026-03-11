@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { System } from "@/lib/utils/interfaces";
+import Checkbox from "@/components/Checkbox";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -163,16 +164,12 @@ export default function SignupPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="is_reserves"
+                  label="איש מילואים"
                   checked={isReserves}
                   onChange={(e) => setIsReserves(e.target.checked)}
-                  className="h-4 w-4 cursor-pointer rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-400/40"
                 />
-                <label htmlFor="is_reserves" className="cursor-pointer text-sm text-zinc-300">
-                  איש מילואים              
-                </label>
               </div>
 
               {error && (
