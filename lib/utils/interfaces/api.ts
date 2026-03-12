@@ -21,12 +21,20 @@ export interface ConstraintPostBody {
   date?: string;
   /** אילוץ מחזורי לפי יום בשבוע */
   recurring?: boolean;
+  /** אילוץ לכל יום בטווח תאריכים */
+  range?: boolean;
   /** תאריך התחלה למחזורי */
   start_date?: string;
   /** יום בשבוע 0–6 (0=ראשון) – למחזורי */
   day_of_week?: number;
   /** תאריך סיום למחזורי – אם לא נשלח: שנה מההתחלה */
   end_date?: string | null;
+  /** תאריך התחלה לטווח (כולל) – חובה כש-range=true */
+  range_start_date?: string;
+  /** תאריך סיום לטווח (כולל) – חובה כש-range=true */
+  range_end_date?: string;
+  /** סוג משמרת לטווח: יום / לילה / שניהם */
+  range_type?: 'day' | 'night' | 'both';
   type: ShiftType;
   status?: ConstraintStatus;
   note?: string;

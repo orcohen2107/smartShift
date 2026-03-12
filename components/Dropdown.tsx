@@ -81,7 +81,7 @@ export default function Dropdown({
       </MenuButton>
 
       <MenuItems
-        className={`absolute z-20 mt-1 w-full origin-top rounded-lg border border-zinc-200 bg-white py-1 text-sm shadow-lg outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 ${panelClassName ?? ''}`}
+        className={`absolute z-30 mt-1 w-full origin-top rounded-lg border border-zinc-200 bg-white py-1 text-sm shadow-lg outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 ${panelClassName ?? ''}`}
         style={{ maxHeight: '16rem', overflowY: 'auto' }}
       >
         <div className="py-1">

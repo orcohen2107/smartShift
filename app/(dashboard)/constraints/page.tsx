@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api/apiFetch';
 import { useConstraints } from '@/contexts/ConstraintsContext';
 import { useProfile } from '@/contexts/ProfileContext';
-import Checkbox from '@/components/Checkbox';
 import Dropdown from '@/components/Dropdown';
 import type { Constraint } from '@/lib/utils/interfaces';
 import { ConstraintStatus, Role, ShiftType } from '@/lib/utils/enums';
@@ -15,6 +14,8 @@ type ConstraintInput = {
   status: ConstraintStatus;
   note?: string;
 };
+
+type ConstraintMode = 'single' | 'recurring' | 'range';
 
 const DAY_NAMES_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -90,9 +91,11 @@ export default function ConstraintsPage() {
     status: ConstraintStatus.Unavailable,
     note: '',
   });
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [mode, setMode] = useState<ConstraintMode>('single');
   const [recurringDayOfWeek, setRecurringDayOfWeek] = useState(2); // שלישי
   const [recurringEndDate, setRecurringEndDate] = useState<string>('');
+  const [rangeEndDate, setRangeEndDate] = useState<string>('');
+  const [rangeShiftMode, setRangeShiftMode] = useState<'day' | 'night' | 'both'>('day');
 
   // טעינה רק בכניסה ראשונה (אין cache) – מנהל מקבל אילוצים של כולם עם שמות
   useEffect(() => {
@@ -138,7 +141,7 @@ export default function ConstraintsPage() {
       setSuccessMessage(null);
       setIsAdding(true);
       try {
-        if (isRecurring) {
+        if (mode === 'recurring') {
           const payload = {
             recurring: true,
             start_date: form.date,
@@ -169,6 +172,45 @@ export default function ConstraintsPage() {
               ? `נוספו ${created.length} אילוצים מחזוריים`
               : 'האילוץ נוסף בהצלחה'
           );
+        } else if (mode === 'range') {
+          if (!form.date || !rangeEndDate) {
+            setError('יש לבחור תאריך התחלה ותאריך סיום לטווח');
+            return;
+          }
+          if (form.date > rangeEndDate) {
+            setError('תאריך התחלה חייב להיות לפני תאריך סיום');
+            return;
+          }
+          const payload = {
+            range: true,
+            range_start_date: form.date,
+            range_end_date: rangeEndDate,
+            range_type: rangeShiftMode,
+            status: form.status,
+            note: form.note || undefined,
+          };
+          const res = await apiFetch<{ created: Constraint[] }>(
+            '/api/constraints',
+            {
+              method: 'POST',
+              json: payload,
+            }
+          );
+          const created = res.created ?? [];
+          setForm((prev) => ({ ...prev, note: '' }));
+          setRangeEndDate('');
+          setItems((prev) => [
+            ...prev,
+            ...created.map((c) => ({
+              ...c,
+              worker_name: c.worker_name ?? profile?.full_name ?? null,
+            })),
+          ]);
+          setSuccessMessage(
+            created.length > 0
+              ? `נוספו ${created.length} אילוצים בטווח`
+              : 'האילוץ נוסף בהצלחה'
+          );
         } else {
           const created = await apiFetch<Constraint>('/api/constraints', {
             method: 'POST',
@@ -196,9 +238,11 @@ export default function ConstraintsPage() {
     },
     [
       form,
-      isRecurring,
+      mode,
       recurringDayOfWeek,
       recurringEndDate,
+      rangeEndDate,
+      rangeShiftMode,
       profile?.full_name,
       setItems,
       setError,
@@ -362,18 +406,33 @@ export default function ConstraintsPage() {
         onSubmit={handleCreate}
         className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="recurring"
-            label="מחזורי (לפי יום בשבוע)"
-            checked={isRecurring}
-            onChange={(e) => setIsRecurring(e.target.checked)}
-          />
+        <div className="flex flex-row flex-wrap items-center gap-3 pb-1 sm:gap-4 sm:pb-0">
+          <div className="space-y-1">
+            <label className={labelClass}>סוג אילוץ</label>
+            <Dropdown
+              value={mode}
+              onSelect={(v) => {
+                const next = (v as ConstraintMode) ?? 'single';
+                setMode(next);
+                if (next !== 'recurring') {
+                  setRecurringEndDate('');
+                }
+                if (next !== 'range') {
+                  setRangeEndDate('');
+                }
+              }}
+              items={[
+                { value: 'single', label: 'אילוץ בודד' },
+                { value: 'recurring', label: 'אילוץ מחזורי' },
+                { value: 'range', label: 'אילוץ לזמן מוגדר' },
+              ]}
+            />
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           <div className="space-y-1">
             <label className={labelClass}>
-              {isRecurring ? 'תאריך התחלה' : 'תאריך'}
+              {mode === 'recurring' || mode === 'range' ? 'תאריך התחלה' : 'תאריך'}
             </label>
             <input
               type="date"
@@ -386,7 +445,7 @@ export default function ConstraintsPage() {
               className={dateInputClass}
             />
           </div>
-          {isRecurring && (
+          {mode === 'recurring' && (
             <>
               <div className="space-y-1">
                 <label className={labelClass}>יום בשבוע</label>
@@ -415,22 +474,55 @@ export default function ConstraintsPage() {
               </div>
             </>
           )}
-          <div className="space-y-1">
-            <label className={labelClass}>סוג משמרת</label>
-            <Dropdown
-              value={form.type}
-              onSelect={(v) =>
-                setForm((prev) => ({
-                  ...prev,
-                  type: v as ShiftType,
-                }))
-              }
-              items={[
-                { value: ShiftType.Day, label: 'משמרת יום' },
-                { value: ShiftType.Night, label: 'משמרת לילה' },
-              ]}
-            />
-          </div>
+          {mode === 'range' && (
+            <>
+              <div className="space-y-1">
+                <label className={labelClass}>תאריך סיום</label>
+                <input
+                  type="date"
+                  required
+                  min={form.date || todayStr}
+                  value={rangeEndDate}
+                  onChange={(e) => setRangeEndDate(e.target.value)}
+                  className={dateInputClass}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className={labelClass}>סוג משמרת</label>
+                <Dropdown
+                  value={rangeShiftMode}
+                  onSelect={(v) =>
+                    setRangeShiftMode(
+                      (v as 'day' | 'night' | 'both') ?? 'day'
+                    )
+                  }
+                  items={[
+                    { value: 'day', label: 'משמרת יום' },
+                    { value: 'night', label: 'משמרת לילה' },
+                    { value: 'both', label: 'יום + לילה (שניהם)' },
+                  ]}
+                />
+              </div>
+            </>
+          )}
+          {mode !== 'range' && (
+            <div className="space-y-1">
+              <label className={labelClass}>סוג משמרת</label>
+              <Dropdown
+                value={form.type}
+                onSelect={(v) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    type: v as ShiftType,
+                  }))
+                }
+                items={[
+                  { value: ShiftType.Day, label: 'משמרת יום' },
+                  { value: ShiftType.Night, label: 'משמרת לילה' },
+                ]}
+              />
+            </div>
+          )}
           <div className="space-y-1">
             <label className={labelClass}>סטטוס</label>
             <Dropdown
