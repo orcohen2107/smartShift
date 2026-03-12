@@ -1,6 +1,6 @@
-import { Role } from "../enums/role";
-import { ShiftType } from "../enums/shiftType";
-import { ConstraintStatus } from "../enums/constraintStatus";
+import { Role } from '../enums/role';
+import { ShiftType } from '../enums/shiftType';
+import { ConstraintStatus } from '../enums/constraintStatus';
 
 export interface System {
   id: string;
@@ -76,4 +76,3 @@ export interface AssignmentsOverview {
   constraints: Constraint[];
   boards: ShiftBoard[];
 }
-

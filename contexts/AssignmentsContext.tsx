@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   createContext,
@@ -7,9 +7,9 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from "react";
-import { apiFetch } from "@/lib/api/apiFetch";
-import type { AssignmentsOverview } from "@/lib/utils/interfaces";
+} from 'react';
+import { apiFetch } from '@/lib/api/apiFetch';
+import type { AssignmentsOverview } from '@/lib/utils/interfaces';
 
 type AssignmentsContextValue = {
   overview: AssignmentsOverview | null;
@@ -19,7 +19,9 @@ type AssignmentsContextValue = {
   selectedBoardId: string | null;
   setSelectedBoardId: (id: string | null) => void;
   load: () => Promise<void>;
-  updateOverview: (updater: (prev: AssignmentsOverview) => AssignmentsOverview) => void;
+  updateOverview: (
+    updater: (prev: AssignmentsOverview) => AssignmentsOverview
+  ) => void;
   hasCachedData: boolean;
 };
 
@@ -31,12 +33,12 @@ let cachedSelectedBoardId: string | null = null;
 
 export function AssignmentsProvider({ children }: { children: ReactNode }) {
   const [overview, setOverview] = useState<AssignmentsOverview | null>(
-    () => cachedOverview,
+    () => cachedOverview
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedBoardId, setSelectedBoardIdState] = useState<string | null>(
-    () => cachedSelectedBoardId,
+    () => cachedSelectedBoardId
   );
 
   const setSelectedBoardId = useCallback((id: string | null) => {
@@ -53,7 +55,7 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [],
+    []
   );
 
   const load = useCallback(async () => {
@@ -61,7 +63,7 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const data = await apiFetch<AssignmentsOverview>(
-        "/api/assignments?type=all",
+        '/api/assignments?type=all'
       );
       cachedOverview = data;
       setOverview(data);
@@ -70,13 +72,14 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
       const nextBoardId =
         boards.length === 0
           ? cachedSelectedBoardId
-          : cachedSelectedBoardId && boards.some((b) => b.id === cachedSelectedBoardId)
+          : cachedSelectedBoardId &&
+              boards.some((b) => b.id === cachedSelectedBoardId)
             ? cachedSelectedBoardId
             : boards[boards.length - 1]!.id;
       cachedSelectedBoardId = nextBoardId;
       setSelectedBoardIdState(nextBoardId);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load";
+      const message = err instanceof Error ? err.message : 'Failed to load';
       setError(message);
     } finally {
       setLoading(false);
@@ -95,7 +98,15 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
       updateOverview,
       hasCachedData: cachedOverview !== null,
     }),
-    [overview, loading, error, selectedBoardId, setSelectedBoardId, load, updateOverview],
+    [
+      overview,
+      loading,
+      error,
+      selectedBoardId,
+      setSelectedBoardId,
+      load,
+      updateOverview,
+    ]
   );
 
   return (
@@ -108,7 +119,7 @@ export function AssignmentsProvider({ children }: { children: ReactNode }) {
 export function useAssignments() {
   const ctx = useContext(AssignmentsContext);
   if (!ctx) {
-    throw new Error("useAssignments must be used within AssignmentsProvider");
+    throw new Error('useAssignments must be used within AssignmentsProvider');
   }
   return ctx;
 }

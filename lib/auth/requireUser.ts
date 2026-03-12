@@ -37,4 +37,3 @@ export async function requireUser(req: Request) {
     profile: profile as Profile,
   };
 }
-

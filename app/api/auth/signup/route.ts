@@ -1,14 +1,15 @@
-import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
-import type { SignupBody } from "@/lib/utils/interfaces";
+import { NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import type { SignupBody } from '@/lib/utils/interfaces';
 
 export async function POST(req: Request) {
-  const { email, password, full_name, system_id, is_reserves } = (await req.json()) as SignupBody;
+  const { email, password, full_name, system_id, is_reserves } =
+    (await req.json()) as SignupBody;
 
   if (!email || !password) {
     return NextResponse.json(
-      { error: "Email and password are required" },
-      { status: 400 },
+      { error: 'Email and password are required' },
+      { status: 400 }
     );
   }
 
@@ -35,4 +36,3 @@ export async function POST(req: Request) {
     requiresEmailConfirmation: !data.session,
   });
 }
-

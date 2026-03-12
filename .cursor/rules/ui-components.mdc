@@ -1,0 +1,33 @@
+---
+description: Reusable UI components and patterns (Dropdown, Checkbox, layout)
+globs: app/(dashboard)/**/*.tsx, app/(auth)/**/*.tsx, components/**/*.tsx
+alwaysApply: false
+---
+
+# UI Components & Patterns
+
+## Dropdown
+
+- השתמשו תמיד בקומפוננטת `Dropdown` מ-`components/Dropdown.tsx` לכל select תפריט:
+  - אל תשתמשו יותר ב-`<select>` רגיל.
+  - העדיפו `items: { value, label }[]` ו-`onSelect(value)` ללוגיקה.
+  - אל תעבירו `buttonClassName` אלא אם יש צורך מאוד מיוחד – ברירת המחדל היא:
+    - גובה: `min-h-[44px]`.
+    - `w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm`.
+    - תואם ל-inputים בטפסים.
+
+## Checkbox
+
+- השתמשו בקומפוננטת `Checkbox` מ-`components/Checkbox.tsx` לכל תיבה מסומנת:
+  - אל תשתמשו ב-`<input type="checkbox">` ישירות בטפסים חדשים.
+  - הקפידו להעביר `id`, `label`, `checked`, `onChange`.
+  - הצבע הראשי של המערכת הוא emerald (`#10b981`) – אל תשנו את צבע ה-V או המסגרת ללא סיבה מוצדקת.
+
+## Forms & Layout
+
+- טפסים בדשבורד ובאילוצים:
+  - מבוססים על גרידים (`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4`).
+  - כל שדה (input, Dropdown, Checkbox-label) נמצא ב-`<div className="space-y-1">` עם label + control.
+- שמרו על עקביות בין דפים:
+  - אילוצים, שיבוצים ודשבורד משתמשים באותו סגנון שדות (גובה, צבעי border, radius).
+

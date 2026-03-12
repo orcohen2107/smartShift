@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-export const THEME_KEY = "smartshift-theme";
+export const THEME_KEY = 'smartshift-theme';
 
 export function ThemeScript() {
   return (

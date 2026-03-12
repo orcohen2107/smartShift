@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/requireUser";
-import { requireManager } from "@/lib/auth/requireManager";
-import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
-import type { Shift, ShiftPostBody } from "@/lib/utils/interfaces";
-import type { ShiftType } from "@/lib/utils/enums";
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/requireUser';
+import { requireManager } from '@/lib/auth/requireManager';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import type { Shift, ShiftPostBody } from '@/lib/utils/interfaces';
+import type { ShiftType } from '@/lib/utils/enums';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -13,20 +13,20 @@ export async function GET(req: Request) {
 
   const { supabase } = res;
   const url = new URL(req.url);
-  const type = url.searchParams.get("type") as ShiftType | null;
+  const type = url.searchParams.get('type') as ShiftType | null;
 
   let query = supabase
-    .from("shifts")
-    .select("*")
-    .order("date", { ascending: true });
+    .from('shifts')
+    .select('*')
+    .order('date', { ascending: true });
 
-  if (type === "day" || type === "night" || type === "full_day") {
-    query = query.eq("type", type);
+  if (type === 'day' || type === 'night' || type === 'full_day') {
+    query = query.eq('type', type);
   }
 
-  const boardId = url.searchParams.get("board_id");
+  const boardId = url.searchParams.get('board_id');
   if (boardId) {
-    query = query.eq("board_id", boardId);
+    query = query.eq('board_id', boardId);
   }
 
   const { data, error } = await query;
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
 
   if (!body.date || !body.type) {
     return NextResponse.json(
-      { error: "Missing date or type" },
-      { status: 400 },
+      { error: 'Missing date or type' },
+      { status: 400 }
     );
   }
 
@@ -67,18 +67,17 @@ export async function POST(req: Request) {
   // שימוש ב-admin כדי שהמשמרת תישמר ותופיע לכל המנהלים במערכת
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
-    .from("shifts")
+    .from('shifts')
     .insert(insertPayload)
-    .select("*")
+    .select('*')
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to create shift" },
-      { status: 500 },
+      { error: error?.message ?? 'Failed to create shift' },
+      { status: 500 }
     );
   }
 
   return NextResponse.json(data as Shift, { status: 201 });
 }
-

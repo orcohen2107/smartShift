@@ -1,5 +1,4 @@
 export enum ConstraintStatus {
-  Unavailable = "unavailable",
-  Partial = "partial", // פנוי לכמה שעות
+  Unavailable = 'unavailable',
+  Partial = 'partial', // פנוי לכמה שעות
 }
-

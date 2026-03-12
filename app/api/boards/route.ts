@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/requireUser";
-import { requireManager } from "@/lib/auth/requireManager";
-import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
-import type { ShiftBoard } from "@/lib/utils/interfaces";
-import type { BoardPostBody } from "@/lib/utils/interfaces";
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/requireUser';
+import { requireManager } from '@/lib/auth/requireManager';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import type { ShiftBoard } from '@/lib/utils/interfaces';
+import type { BoardPostBody } from '@/lib/utils/interfaces';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -14,13 +14,13 @@ export async function GET(req: Request) {
   const { profile } = res;
   const admin = getSupabaseAdmin();
   let query = admin
-    .from("shift_boards")
-    .select("*")
-    .order("created_at", { ascending: true });
+    .from('shift_boards')
+    .select('*')
+    .order('created_at', { ascending: true });
   if (profile.system_id) {
-    query = query.eq("system_id", profile.system_id);
+    query = query.eq('system_id', profile.system_id);
   } else {
-    query = query.is("system_id", null);
+    query = query.is('system_id', null);
   }
   const { data, error } = await query;
 
@@ -41,10 +41,7 @@ export async function POST(req: Request) {
   const body = (await req.json()) as BoardPostBody;
 
   if (!body.name?.trim()) {
-    return NextResponse.json(
-      { error: "Missing board name" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'Missing board name' }, { status: 400 });
   }
 
   const workersPerShift = body.workers_per_shift ?? 1;
@@ -52,7 +49,7 @@ export async function POST(req: Request) {
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
-    .from("shift_boards")
+    .from('shift_boards')
     .insert({
       name: body.name.trim(),
       workers_per_shift: Math.max(1, workersPerShift),
@@ -60,13 +57,13 @@ export async function POST(req: Request) {
       created_by: profile.id,
       system_id: profile.system_id ?? null,
     })
-    .select("*")
+    .select('*')
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to create board" },
-      { status: 500 },
+      { error: error?.message ?? 'Failed to create board' },
+      { status: 500 }
     );
   }
 

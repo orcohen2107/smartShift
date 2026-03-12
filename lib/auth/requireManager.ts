@@ -6,9 +6,12 @@ export async function requireManager(req: Request) {
   if (!res.ok) return res;
 
   if (res.profile.role !== Role.Manager) {
-    return { ok: false as const, status: 403, error: 'Only managers can access this resource' };
+    return {
+      ok: false as const,
+      status: 403,
+      error: 'Only managers can access this resource',
+    };
   }
 
   return res;
 }
-

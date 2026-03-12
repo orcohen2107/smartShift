@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth/requireUser";
-import type { Profile } from "@/lib/utils/interfaces";
+import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth/requireUser';
+import type { Profile } from '@/lib/utils/interfaces';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
