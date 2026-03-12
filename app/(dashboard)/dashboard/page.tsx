@@ -15,12 +15,13 @@ function formatDateHe(dateStr: string): string {
   return `${d}.${m}.${y}`;
 }
 
-function getCurrentWeekDates(): string[] {
+function getWeekDates(offset: number): string[] {
   const out: string[] = [];
   const today = new Date();
   const dayOfWeek = today.getDay();
   const start = new Date(today);
-  start.setDate(today.getDate() - dayOfWeek);
+  // offset חיובי = שבועות קדימה, שלילי = שבועות אחורה
+  start.setDate(today.getDate() - dayOfWeek + offset * 7);
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
@@ -44,9 +45,10 @@ export default function DashboardPage() {
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
   const weekDates = useMemo(
-    () => (mounted ? getCurrentWeekDates() : []),
-    [mounted]
+    () => (mounted ? getWeekDates(weekOffset) : []),
+    [mounted, weekOffset]
   );
 
   useEffect(() => {
@@ -176,13 +178,55 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-row flex-wrap items-end gap-2 sm:justify-between sm:gap-3">
-        <div className="min-w-0 shrink-0">
+        <div className="min-w-0 shrink-0 space-y-1">
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             דשבורד
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            סקירה וסטטיסטיקות לשבוע הנוכחי
+            סקירה וסטטיסטיקות כלליות, עם פירוט שבועי מטה.
           </p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-200">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((v) => v - 1)}
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-lg text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              aria-label="שבוע קודם"
+            >
+              ‹
+            </button>
+            <span className="whitespace-nowrap">
+              {weekOffset === 0
+                ? 'השבוע'
+                : weekOffset === 1
+                ? 'שבוע הבא'
+                : weekOffset === -1
+                ? 'שבוע קודם'
+                : weekOffset > 0
+                ? `עוד ${weekOffset === 2 ? 'שבועיים' : `${weekOffset} שבועות`}`
+                : `לפני ${
+                    Math.abs(weekOffset) === 2
+                      ? 'שבועיים'
+                      : `${Math.abs(weekOffset)} שבועות`
+                  }`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((v) => v + 1)}
+              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full text-lg text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              aria-label="שבוע הבא"
+            >
+              ›
+            </button>
+            {weekOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="ml-1 cursor-pointer text-[11px] text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+              >
+                חזרה להיום
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0 md:overflow-visible">
           {boards.length > 0 && (

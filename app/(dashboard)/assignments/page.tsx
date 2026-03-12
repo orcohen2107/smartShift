@@ -105,6 +105,22 @@ export default function AssignmentsPage() {
     return map;
   }, [overview]);
 
+  const assignmentCountByWorkerThisWeek: Record<string, number> = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const assignments = overview?.assignments ?? [];
+    const datesInWeek = new Set(getWeekDates(weekOffset));
+    const shiftIdsInWeek = new Set(
+      (overview?.shifts ?? [])
+        .filter((s) => datesInWeek.has(s.date))
+        .map((s) => s.id)
+    );
+    assignments.forEach((a) => {
+      if (!shiftIdsInWeek.has(a.shift_id)) return;
+      counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
+    });
+    return counts;
+  }, [overview?.assignments, overview?.shifts, weekOffset]);
+
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
     const list = [...(overview?.workers ?? [])];
@@ -750,10 +766,21 @@ export default function AssignmentsPage() {
               onSelect={setInitialWorkerId}
               items={[
                 { value: '', label: 'ללא שיבוץ התחלתי' },
-                ...workersSorted.map((w) => ({
-                  value: w.id,
-                  label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}`,
-                })),
+                ...workersSorted.map((w) => {
+                  const count = assignmentCountByWorkerThisWeek[w.id] ?? 0;
+                  const suffixParts: string[] = [];
+                  if (!w.user_id) suffixParts.push('טרם נרשם');
+                  if (count > 0)
+                    suffixParts.push(`${count} שיבוצים השבוע`);
+                  const suffix =
+                    suffixParts.length > 0
+                      ? ` (${suffixParts.join(' · ')})`
+                      : '';
+                  return {
+                    value: w.id,
+                    label: `${workerDisplayName(w)}${suffix}`,
+                  };
+                }),
               ]}
             />
           </div>
@@ -997,10 +1024,16 @@ export default function AssignmentsPage() {
                     }}
                     items={[
                       { value: '', label: 'בחירת כונן…' },
-                      ...workersSorted.map((w) => ({
-                        value: w.id,
-                        label: workerDisplayName(w),
-                      })),
+                      ...workersSorted.map((w) => {
+                        const count =
+                          assignmentCountByWorkerThisWeek[w.id] ?? 0;
+                        const suffix =
+                          count > 0 ? ` · ${count} שיבוצים השבוע` : '';
+                        return {
+                          value: w.id,
+                          label: `${workerDisplayName(w)}${suffix}`,
+                        };
+                      }),
                     ]}
                   />
                 </div>
@@ -1146,9 +1179,20 @@ export default function AssignmentsPage() {
                                 shift.date,
                                 shift.type
                               );
+                              const count =
+                                assignmentCountByWorkerThisWeek[w.id] ?? 0;
+                              const suffixParts: string[] = [];
+                              if (!w.user_id) suffixParts.push('טרם נרשם');
+                              if (unavailable) suffixParts.push('לא זמין');
+                              if (count > 0)
+                                suffixParts.push(`${count} שיבוצים השבוע`);
+                              const suffix =
+                                suffixParts.length > 0
+                                  ? ` (${suffixParts.join(' · ')})`
+                                  : '';
                               return {
                                 value: w.id,
-                                label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}${unavailable ? ' (לא זמין)' : ''}`,
+                                label: `${workerDisplayName(w)}${suffix}`,
                               };
                             }),
                           ]}
