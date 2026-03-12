@@ -1,7 +1,10 @@
 import { getSupabaseBrowser } from '../db/supabaseBrowser';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function apiFetch<T>(input: string,init?: RequestInit & { json?: unknown }): Promise<T> {
+export async function apiFetch<T>(
+  input: string,
+  init?: RequestInit & { json?: unknown }
+): Promise<T> {
   const supabase: SupabaseClient = getSupabaseBrowser();
   const { data } = await supabase.auth.getSession();
 
@@ -16,16 +19,18 @@ export async function apiFetch<T>(input: string,init?: RequestInit & { json?: un
 
   const body = init?.json ? JSON.stringify(init.json) : init?.body;
 
-  const res = await fetch(input, { ...init,headers, body });
+  const res = await fetch(input, { ...init, headers, body });
 
   const text: string = await res.text();
   const parsed: unknown = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
-    const message = parsed && typeof parsed === 'object' && 'error' in parsed ? String(parsed.error) : `Request failed (${res.status})`;
+    const message =
+      parsed && typeof parsed === 'object' && 'error' in parsed
+        ? String(parsed.error)
+        : `Request failed (${res.status})`;
     throw new Error(message);
   }
 
   return parsed as unknown as T;
 }
-

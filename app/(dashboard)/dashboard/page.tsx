@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useAssignments } from "@/contexts/AssignmentsContext";
-import { useProfile } from "@/contexts/ProfileContext";
-import Dropdown from "@/components/Dropdown";
-import type { Shift, Worker } from "@/lib/utils/interfaces";
-import { Role, ShiftType } from "@/lib/utils/enums";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useAssignments } from '@/contexts/AssignmentsContext';
+import { useProfile } from '@/contexts/ProfileContext';
+import Dropdown from '@/components/Dropdown';
+import type { Shift, Worker } from '@/lib/utils/interfaces';
+import { Role, ShiftType } from '@/lib/utils/enums';
 
-const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const DAY_NAMES_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
 function formatDateHe(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-");
+  const [y, m, d] = dateStr.split('-');
   return `${d}.${m}.${y}`;
 }
 
@@ -25,18 +25,29 @@ function getCurrentWeekDates(): string[] {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     out.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     );
   }
   return out;
 }
 
 export default function DashboardPage() {
-  const { overview, loading, error, load, selectedBoardId, setSelectedBoardId, hasCachedData } = useAssignments();
+  const {
+    overview,
+    loading,
+    error,
+    load,
+    selectedBoardId,
+    setSelectedBoardId,
+    hasCachedData,
+  } = useAssignments();
   const profile = useProfile();
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const weekDates = useMemo(() => (mounted ? getCurrentWeekDates() : []), [mounted]);
+  const weekDates = useMemo(
+    () => (mounted ? getCurrentWeekDates() : []),
+    [mounted]
+  );
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -61,7 +72,7 @@ export default function DashboardPage() {
     const map: Record<string, { day?: Shift; night?: Shift }> = {};
     shiftsFiltered.forEach((s) => {
       if (!map[s.date]) map[s.date] = {};
-      map[s.date][s.type as "day" | "night"] = s;
+      map[s.date][s.type as 'day' | 'night'] = s;
     });
     return map;
   }, [shiftsFiltered]);
@@ -73,7 +84,9 @@ export default function DashboardPage() {
     const targetWorkerId =
       selectedWorkerId ??
       (profile
-        ? overview?.workers?.find((w) => w.user_id === profile.id || w.id === profile.id)?.id
+        ? overview?.workers?.find(
+            (w) => w.user_id === profile.id || w.id === profile.id
+          )?.id
         : null);
     const myAssignments =
       targetWorkerId != null
@@ -89,11 +102,20 @@ export default function DashboardPage() {
     });
     const byDay: Record<string, { day: number; night: number }> = {};
     weekDates.forEach((d) => {
-      const dayShift = shifts.find((s) => s.date === d && s.type === ShiftType.Day);
-      const nightShift = shifts.find((s) => s.date === d && s.type === ShiftType.Night);
+      const dayShift = shifts.find(
+        (s) => s.date === d && s.type === ShiftType.Day
+      );
+      const nightShift = shifts.find(
+        (s) => s.date === d && s.type === ShiftType.Night
+      );
       byDay[d] = {
-        day: dayShift ? (assignments.filter((a) => a.shift_id === dayShift.id).length ?? 0) : 0,
-        night: nightShift ? (assignments.filter((a) => a.shift_id === nightShift.id).length ?? 0) : 0,
+        day: dayShift
+          ? (assignments.filter((a) => a.shift_id === dayShift.id).length ?? 0)
+          : 0,
+        night: nightShift
+          ? (assignments.filter((a) => a.shift_id === nightShift.id).length ??
+            0)
+          : 0,
       };
     });
     return { dayCount, nightCount, assignmentsCount, targetWorkerId, byDay };
@@ -110,20 +132,22 @@ export default function DashboardPage() {
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
     const list: Worker[] = [...(overview?.workers ?? [])];
-    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? "").trim();
+    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? '').trim();
     return list.sort((a, b) => {
       if (a.is_reserves !== b.is_reserves) return a.is_reserves ? 1 : -1;
-      return name(a).localeCompare(name(b), "he");
+      return name(a).localeCompare(name(b), 'he');
     });
   }, [overview?.workers]);
 
   const workerDisplayName = (w: Partial<Worker> | undefined) =>
-    w ? `${w.full_name ?? w.email ?? w.id ?? "—"}${w.is_reserves ? " (מילואים)" : ""}` : "—";
+    w
+      ? `${w.full_name ?? w.email ?? w.id ?? '—'}${w.is_reserves ? ' (מילואים)' : ''}`
+      : '—';
 
   const getAssignmentsForShift = useCallback(
     (shiftId: string) =>
       overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [],
-    [overview?.assignments],
+    [overview?.assignments]
   );
 
   if (loading) {
@@ -131,7 +155,9 @@ export default function DashboardPage() {
       <div className="flex min-h-[300px] items-center justify-center">
         <div className="flex flex-col items-center gap-2">
           <div className="h-12 w-12 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">טוען דשבורד...</p>
+          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            טוען דשבורד...
+          </p>
         </div>
       </div>
     );
@@ -149,7 +175,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-row flex-wrap items-end gap-2 sm:gap-3 sm:justify-between">
+      <div className="flex flex-row flex-wrap items-end gap-2 sm:justify-between sm:gap-3">
         <div className="min-w-0 shrink-0">
           <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             דשבורד
@@ -160,68 +186,81 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0 md:overflow-visible">
           {boards.length > 0 && (
-            <div className="flex flex-col items-center space-y-1 w-40">
+            <div className="flex w-40 flex-col items-center space-y-1">
               <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 לוח שיבוצים
               </label>
               <Dropdown
                 placeholder="כל הלוחות"
-                value={selectedBoardId ?? ""}
+                value={selectedBoardId ?? ''}
                 onSelect={(id) => setSelectedBoardId(id || null)}
                 items={[
-                  { value: "", label: "כל הלוחות" },
+                  { value: '', label: 'כל הלוחות' },
                   ...boards.map((b) => ({
                     value: b.id,
-                    label: `${b.name}${b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : " (אדם יחיד)"}`,
+                    label: `${b.name}${b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : ' (אדם יחיד)'}`,
                   })),
                 ]}
               />
             </div>
           )}
           {isManager && overview?.workers && overview.workers.length > 0 && (
-          <div className="flex flex-col items-center space-y-1 w-40">
-            <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
-              צפייה בסיכום שיבוצים של
-            </label>
-            <Dropdown
-              placeholder="אני (המשתמש המחובר)"
-              value={selectedWorkerId ?? ""}
-              onSelect={(id) => setSelectedWorkerId(id || null)}
-              items={[
-                { value: "", label: "אני (המשתמש המחובר)" },
-                ...workersSorted
-                  .filter((w) => w.user_id !== profile?.id && w.id !== profile?.id)
-                  .map((w) => ({
-                    value: w.id,
-                    label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}`,
-                  })),
-              ]}
-            />
-          </div>
+            <div className="flex w-40 flex-col items-center space-y-1">
+              <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                צפייה בסיכום שיבוצים של
+              </label>
+              <Dropdown
+                placeholder="אני (המשתמש המחובר)"
+                value={selectedWorkerId ?? ''}
+                onSelect={(id) => setSelectedWorkerId(id || null)}
+                items={[
+                  { value: '', label: 'אני (המשתמש המחובר)' },
+                  ...workersSorted
+                    .filter(
+                      (w) => w.user_id !== profile?.id && w.id !== profile?.id
+                    )
+                    .map((w) => ({
+                      value: w.id,
+                      label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}`,
+                    })),
+                ]}
+              />
+            </div>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs">משמרות יום</p>
-          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
+          <p className="text-[10px] font-medium text-zinc-500 sm:text-xs dark:text-zinc-400">
+            משמרות יום
+          </p>
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 sm:mt-1 sm:text-2xl dark:text-zinc-50">
             {stats.dayCount}
           </p>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs">משמרות לילה</p>
-          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
+          <p className="text-[10px] font-medium text-zinc-500 sm:text-xs dark:text-zinc-400">
+            משמרות לילה
+          </p>
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 sm:mt-1 sm:text-2xl dark:text-zinc-50">
             {stats.nightCount}
           </p>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white p-2 sm:rounded-2xl sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="truncate text-[10px] font-medium text-zinc-500 dark:text-zinc-400 sm:text-xs" title={stats.targetWorkerId ? `שיבוצים של ${workerDisplayName(workersById[stats.targetWorkerId])}` : "השיבוצים שלי"}>
+          <p
+            className="truncate text-[10px] font-medium text-zinc-500 sm:text-xs dark:text-zinc-400"
+            title={
+              stats.targetWorkerId
+                ? `שיבוצים של ${workerDisplayName(workersById[stats.targetWorkerId])}`
+                : 'השיבוצים שלי'
+            }
+          >
             {stats.targetWorkerId
               ? `שיבוצים של ${workerDisplayName(workersById[stats.targetWorkerId])}`
-              : "השיבוצים שלי"}
+              : 'השיבוצים שלי'}
           </p>
-          <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-50 sm:mt-1 sm:text-2xl">
+          <p className="mt-0.5 text-lg font-bold text-zinc-900 sm:mt-1 sm:text-2xl dark:text-zinc-50">
             {stats.assignmentsCount}
           </p>
         </div>
@@ -231,34 +270,58 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
           שיבוצים לפי יום – השבוע
         </h2>
-        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+        <div className="-mx-2 overflow-x-auto px-2 sm:mx-0 sm:px-0">
           <table className="w-full min-w-[320px] text-sm">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-700">
-                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">יום</th>
-                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">תאריך</th>
-                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">משמרת יום</th>
-                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">משמרת לילה</th>
+                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                  יום
+                </th>
+                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                  תאריך
+                </th>
+                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                  משמרת יום
+                </th>
+                <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                  משמרת לילה
+                </th>
               </tr>
             </thead>
             <tbody>
               {weekDates.map((date) => {
                 const dayShift = shiftsByDateType[date]?.day;
                 const nightShift = shiftsByDateType[date]?.night;
-                const assignDay = dayShift ? getAssignmentsForShift(dayShift.id) : [];
-                const assignNight = nightShift ? getAssignmentsForShift(nightShift.id) : [];
-                const [y, m, d] = date.split("-");
-                const dayName = DAY_NAMES_HE[new Date(Number(y), Number(m) - 1, Number(d)).getDay()];
+                const assignDay = dayShift
+                  ? getAssignmentsForShift(dayShift.id)
+                  : [];
+                const assignNight = nightShift
+                  ? getAssignmentsForShift(nightShift.id)
+                  : [];
+                const [y, m, d] = date.split('-');
+                const dayName =
+                  DAY_NAMES_HE[
+                    new Date(Number(y), Number(m) - 1, Number(d)).getDay()
+                  ];
                 return (
-                  <tr key={date} className="border-b border-zinc-100 dark:border-zinc-800">
-                    <td className="p-2 text-zinc-500 dark:text-zinc-400">{dayName}</td>
+                  <tr
+                    key={date}
+                    className="border-b border-zinc-100 dark:border-zinc-800"
+                  >
+                    <td className="p-2 text-zinc-500 dark:text-zinc-400">
+                      {dayName}
+                    </td>
                     <td className="p-2 font-medium text-zinc-900 dark:text-zinc-100">
                       {formatDateHe(date)}
                     </td>
                     <td className="p-2">
                       {assignDay.length > 0 ? (
                         <span className="text-xs">
-                          {assignDay.map((a) => workerDisplayName(workersById[a.worker_id])).join(", ")}
+                          {assignDay
+                            .map((a) =>
+                              workerDisplayName(workersById[a.worker_id])
+                            )
+                            .join(', ')}
                         </span>
                       ) : (
                         <span className="text-zinc-400">—</span>
@@ -267,7 +330,11 @@ export default function DashboardPage() {
                     <td className="p-2">
                       {assignNight.length > 0 ? (
                         <span className="text-xs">
-                          {assignNight.map((a) => workerDisplayName(workersById[a.worker_id])).join(", ")}
+                          {assignNight
+                            .map((a) =>
+                              workerDisplayName(workersById[a.worker_id])
+                            )
+                            .join(', ')}
                         </span>
                       ) : (
                         <span className="text-zinc-400">—</span>

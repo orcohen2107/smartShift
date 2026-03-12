@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useCallback, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
-import { useTheme } from "@/components/ThemeProvider";
-import { useProfile } from "@/contexts/ProfileContext";
-import { Role } from "@/lib/utils/enums";
+import { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
+import { useTheme } from '@/components/ThemeProvider';
+import { useProfile } from '@/contexts/ProfileContext';
+import { Role } from '@/lib/utils/enums';
 
 const baseLinks = [
-  { href: "/dashboard", label: "דשבורד" },
-  { href: "/constraints", label: "אילוצים" },
+  { href: '/dashboard', label: 'דשבורד' },
+  { href: '/constraints', label: 'אילוצים' },
 ];
 
 export function Navbar() {
@@ -23,26 +23,26 @@ export function Navbar() {
   const handleLogout = useCallback(async () => {
     const supabase = getSupabaseBrowser();
     const { error } = await supabase.auth.signOut();
-    if (error && error.code !== "session_not_found") {
-      console.error("logout error", error);
+    if (error && error.code !== 'session_not_found') {
+      console.error('logout error', error);
     }
-    router.replace("/login");
+    router.replace('/login');
   }, [router]);
 
   const managerLinks = useMemo(
     () =>
       profile?.role === Role.Manager
         ? [
-            { href: "/assignments", label: "שיבוצים" },
-            { href: "/settings", label: "הגדרות" },
+            { href: '/assignments', label: 'שיבוצים' },
+            { href: '/settings', label: 'הגדרות' },
           ]
         : [],
-    [profile?.role],
+    [profile?.role]
   );
 
   const allLinks = useMemo(
     () => [...baseLinks, ...managerLinks],
-    [managerLinks],
+    [managerLinks]
   );
 
   const linkClass = useCallback(
@@ -50,11 +50,11 @@ export function Navbar() {
       const active = pathname === href;
       return `block rounded-md px-3 py-2.5 text-sm transition min-h-[44px] flex items-center ${
         active
-          ? "bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950"
-          : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950'
+          : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
       }`;
     },
-    [pathname],
+    [pathname]
   );
 
   return (
@@ -80,7 +80,7 @@ export function Navbar() {
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {profile?.full_name && (
-            <span className="hidden truncate text-xs text-zinc-600 dark:text-zinc-400 sm:inline max-w-[120px]">
+            <span className="hidden max-w-[120px] truncate text-xs text-zinc-600 sm:inline dark:text-zinc-400">
               שלום, {profile.full_name}
             </span>
           )}
@@ -88,14 +88,14 @@ export function Navbar() {
             type="button"
             onClick={toggleTheme}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            title={theme === "dark" ? "מעבר למצב בהיר" : "מעבר למצב כהה"}
+            title={theme === 'dark' ? 'מעבר למצב בהיר' : 'מעבר למצב כהה'}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === 'dark' ? '☀️' : '🌙'}
           </button>
           <button
             type="button"
             onClick={handleLogout}
-            className="hidden rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 sm:block min-h-[36px]"
+            className="hidden min-h-[36px] rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 sm:block dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             יציאה
           </button>
@@ -105,7 +105,7 @@ export function Navbar() {
             type="button"
             onClick={() => setMobileMenuOpen((o) => !o)}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 md:hidden"
-            aria-label={mobileMenuOpen ? "סגור תפריט" : "פתח תפריט"}
+            aria-label={mobileMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
           >
             {mobileMenuOpen ? (
               <span className="text-lg">✕</span>
@@ -125,8 +125,8 @@ export function Navbar() {
         />
       )}
       <div
-        className={`fixed top-0 right-0 z-50 w-[min(280px,85vw)] max-h-[100dvh] overflow-y-auto border-r border-zinc-200 bg-white shadow-xl transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-950 md:hidden ${
-          mobileMenuOpen ? "translate-x-0" : "translate-x-full"
+        className={`fixed top-0 right-0 z-50 max-h-[100dvh] w-[min(280px,85vw)] overflow-y-auto border-r border-zinc-200 bg-white shadow-xl transition-transform duration-200 md:hidden dark:border-zinc-800 dark:bg-zinc-950 ${
+          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{ insetBlock: 0 }}
       >
@@ -152,7 +152,7 @@ export function Navbar() {
               setMobileMenuOpen(false);
               void handleLogout();
             }}
-            className="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2.5 text-right text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 min-h-[44px]"
+            className="mt-2 min-h-[44px] w-full rounded-md border border-zinc-300 px-3 py-2.5 text-right text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             יציאה
           </button>

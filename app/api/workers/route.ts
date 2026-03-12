@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { requireManager } from "@/lib/auth/requireManager";
-import type { Worker, WorkerPostBody } from "@/lib/utils/interfaces";
+import { NextResponse } from 'next/server';
+import { requireManager } from '@/lib/auth/requireManager';
+import type { Worker, WorkerPostBody } from '@/lib/utils/interfaces';
 
 export async function GET(req: Request) {
   const res = await requireManager(req);
@@ -10,11 +10,11 @@ export async function GET(req: Request) {
 
   const { supabase, profile } = res;
   let query = supabase
-    .from("workers")
-    .select("*")
-    .order("full_name", { ascending: true });
+    .from('workers')
+    .select('*')
+    .order('full_name', { ascending: true });
   if (profile.system_id) {
-    query = query.eq("system_id", profile.system_id);
+    query = query.eq('system_id', profile.system_id);
   }
   const { data, error } = await query;
 
@@ -36,26 +36,26 @@ export async function POST(req: Request) {
   const fullName = body.full_name?.trim();
   if (!fullName) {
     return NextResponse.json(
-      { error: "full_name is required" },
-      { status: 400 },
+      { error: 'full_name is required' },
+      { status: 400 }
     );
   }
 
   const { data, error } = await supabase
-    .from("workers")
+    .from('workers')
     .insert({
       full_name: fullName,
       email: null,
       user_id: null,
       system_id: profile.system_id ?? null,
     })
-    .select("*")
+    .select('*')
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to add worker" },
-      { status: 500 },
+      { error: error?.message ?? 'Failed to add worker' },
+      { status: 500 }
     );
   }
 

@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api/apiFetch";
-import type { Profile, System, Worker } from "@/lib/utils/interfaces";
-import { Role } from "@/lib/utils/enums";
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api/apiFetch';
+import type { Profile, System, Worker } from '@/lib/utils/interfaces';
+import { Role } from '@/lib/utils/enums';
 
 export default function SettingsPage() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [systems, setSystems] = useState<System[]>([]);
-  const [newSystemName, setNewSystemName] = useState("");
+  const [newSystemName, setNewSystemName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
@@ -22,12 +22,12 @@ export default function SettingsPage() {
     setError(null);
     setLoading(true);
     try {
-      const data = await apiFetch<{ profiles: Profile[] }>("/api/profiles");
+      const data = await apiFetch<{ profiles: Profile[] }>('/api/profiles');
       setProfiles(data.profiles);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load";
-      if (msg.includes("Only managers") || msg.includes("403")) {
-        router.replace("/dashboard");
+      const msg = err instanceof Error ? err.message : 'Failed to load';
+      if (msg.includes('Only managers') || msg.includes('403')) {
+        router.replace('/dashboard');
         return;
       }
       setError(msg);
@@ -38,7 +38,7 @@ export default function SettingsPage() {
 
   const loadSystems = useCallback(async () => {
     try {
-      const data = await fetch("/api/systems").then((r) => r.json());
+      const data = await fetch('/api/systems').then((r) => r.json());
       setSystems(data.systems ?? []);
     } catch {
       setSystems([]);
@@ -47,7 +47,7 @@ export default function SettingsPage() {
 
   const loadWorkers = useCallback(async () => {
     try {
-      const data = await apiFetch<{ workers: Worker[] }>("/api/workers");
+      const data = await apiFetch<{ workers: Worker[] }>('/api/workers');
       setWorkers(data.workers ?? []);
     } catch {
       setWorkers([]);
@@ -67,14 +67,14 @@ export default function SettingsPage() {
     setError(null);
     setAddingSystem(true);
     try {
-      await apiFetch<System>("/api/systems", {
-        method: "POST",
+      await apiFetch<System>('/api/systems', {
+        method: 'POST',
         json: { name },
       });
-      setNewSystemName("");
+      setNewSystemName('');
       await loadSystems();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add system");
+      setError(err instanceof Error ? err.message : 'Failed to add system');
     } finally {
       setAddingSystem(false);
     }
@@ -85,13 +85,13 @@ export default function SettingsPage() {
     setPromotingId(id);
     try {
       await apiFetch<{ profile: Profile }>(`/api/profiles/${id}/promote`, {
-        method: "POST",
+        method: 'POST',
       });
       setProfiles((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, role: Role.Manager } : p)),
+        prev.map((p) => (p.id === id ? { ...p, role: Role.Manager } : p))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to promote");
+      setError(err instanceof Error ? err.message : 'Failed to promote');
     } finally {
       setPromotingId(null);
     }
@@ -101,10 +101,10 @@ export default function SettingsPage() {
     setError(null);
     setDeletingWorkerId(id);
     try {
-      await apiFetch(`/api/workers/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/workers/${id}`, { method: 'DELETE' });
       setWorkers((prev) => prev.filter((w) => w.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete worker");
+      setError(err instanceof Error ? err.message : 'Failed to delete worker');
     } finally {
       setDeletingWorkerId(null);
     }
@@ -115,7 +115,9 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[200px] items-center justify-center">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">טוען הגדרות...</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          טוען הגדרות...
+        </p>
       </div>
     );
   }
@@ -142,20 +144,23 @@ export default function SettingsPage() {
           מערכות
         </h2>
         <div className="p-4">
-          <form onSubmit={handleAddSystem} className="flex flex-col gap-2 sm:flex-row">
+          <form
+            onSubmit={handleAddSystem}
+            className="flex flex-col gap-2 sm:flex-row"
+          >
             <input
               type="text"
               value={newSystemName}
               onChange={(e) => setNewSystemName(e.target.value)}
               placeholder="שם מערכת חדשה"
-              className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             />
             <button
               type="submit"
               disabled={addingSystem || !newSystemName.trim()}
-              className="cursor-pointer min-h-[44px] shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+              className="min-h-[44px] shrink-0 cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
             >
-              {addingSystem ? "מוסיף..." : "הוסף מערכת"}
+              {addingSystem ? 'מוסיף...' : 'הוסף מערכת'}
             </button>
           </form>
           <ul className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -182,15 +187,15 @@ export default function SettingsPage() {
                 className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
               >
                 <span className="min-w-0 flex-1 font-medium text-zinc-900 dark:text-zinc-100">
-                  {w.full_name ?? "ללא שם"}
+                  {w.full_name ?? 'ללא שם'}
                 </span>
                 <button
                   type="button"
                   onClick={() => handleDeleteWorker(w.id)}
                   disabled={deletingWorkerId === w.id}
-                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
+                  className="min-h-[40px] shrink-0 cursor-pointer rounded-lg border border-red-300 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-950/50"
                 >
-                  {deletingWorkerId === w.id ? "מוחק..." : "מחק כונן"}
+                  {deletingWorkerId === w.id ? 'מוחק...' : 'מחק כונן'}
                 </button>
               </li>
             ))
@@ -210,7 +215,7 @@ export default function SettingsPage() {
             >
               <div className="min-w-0 flex-1">
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {p.full_name ?? p.email ?? "ללא שם"}
+                  {p.full_name ?? p.email ?? 'ללא שם'}
                 </span>
                 {p.email && (
                   <span className="mr-2 text-zinc-500 dark:text-zinc-400">
@@ -228,9 +233,9 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => handlePromote(p.id)}
                   disabled={!!promotingId}
-                  className="cursor-pointer min-h-[40px] shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+                  className="min-h-[40px] shrink-0 cursor-pointer rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
                 >
-                  {promotingId === p.id ? "מעדכן..." : "הפוך למנהל"}
+                  {promotingId === p.id ? 'מעדכן...' : 'הפוך למנהל'}
                 </button>
               )}
             </li>

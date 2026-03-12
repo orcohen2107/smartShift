@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { requireManager } from "@/lib/auth/requireManager";
-import { getSupabaseAdmin } from "@/lib/db/supabaseAdmin";
-import type { System } from "@/lib/utils/interfaces";
-import type { SystemPostBody } from "@/lib/utils/interfaces";
+import { NextResponse } from 'next/server';
+import { requireManager } from '@/lib/auth/requireManager';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import type { System } from '@/lib/utils/interfaces';
+import type { SystemPostBody } from '@/lib/utils/interfaces';
 
 /** רשימת מערכות – ציבורי (להרשמה) */
 export async function GET() {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
-    .from("systems")
-    .select("id, name, created_at")
-    .order("name", { ascending: true });
+    .from('systems')
+    .select('id, name, created_at')
+    .order('name', { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -29,23 +29,20 @@ export async function POST(req: Request) {
   const body = (await req.json()) as SystemPostBody;
   const name = body.name?.trim();
   if (!name) {
-    return NextResponse.json(
-      { error: "name is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
-    .from("systems")
+    .from('systems')
     .insert({ name })
-    .select("*")
+    .select('*')
     .single();
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to create system" },
-      { status: 500 },
+      { error: error?.message ?? 'Failed to create system' },
+      { status: 500 }
     );
   }
 

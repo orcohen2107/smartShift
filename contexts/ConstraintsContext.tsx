@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   createContext,
@@ -7,9 +7,9 @@ import {
   useMemo,
   useState,
   type ReactNode,
-} from "react";
-import { apiFetch } from "@/lib/api/apiFetch";
-import type { Constraint } from "@/lib/utils/interfaces";
+} from 'react';
+import { apiFetch } from '@/lib/api/apiFetch';
+import type { Constraint } from '@/lib/utils/interfaces';
 
 type LoadOptions = { all?: boolean };
 
@@ -34,10 +34,10 @@ let cachedSystemMembers: SystemMember[] | null = null;
 
 export function ConstraintsProvider({ children }: { children: ReactNode }) {
   const [constraints, setConstraints] = useState<Constraint[]>(
-    () => cachedConstraints ?? [],
+    () => cachedConstraints ?? []
   );
   const [systemMembers, setSystemMembers] = useState<SystemMember[]>(
-    () => cachedSystemMembers ?? [],
+    () => cachedSystemMembers ?? []
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +47,7 @@ export function ConstraintsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const url =
-        options?.all === true
-          ? "/api/constraints?all=1"
-          : "/api/constraints";
+        options?.all === true ? '/api/constraints?all=1' : '/api/constraints';
       const data = await apiFetch<{
         constraints: Constraint[];
         systemMembers?: SystemMember[];
@@ -64,7 +62,7 @@ export function ConstraintsProvider({ children }: { children: ReactNode }) {
         setSystemMembers([]);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load";
+      const message = err instanceof Error ? err.message : 'Failed to load';
       setError(message);
     } finally {
       setLoading(false);
@@ -74,12 +72,12 @@ export function ConstraintsProvider({ children }: { children: ReactNode }) {
   const setConstraintsAndCache = useCallback(
     (updater: React.SetStateAction<Constraint[]>) => {
       setConstraints((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
+        const next = typeof updater === 'function' ? updater(prev) : updater;
         cachedConstraints = next;
         return next;
       });
     },
-    [],
+    []
   );
 
   const value = useMemo(
@@ -93,7 +91,7 @@ export function ConstraintsProvider({ children }: { children: ReactNode }) {
       load,
       hasCachedData: cachedConstraints !== null,
     }),
-    [constraints, setConstraintsAndCache, systemMembers, loading, error, load],
+    [constraints, setConstraintsAndCache, systemMembers, loading, error, load]
   );
 
   return (
@@ -106,7 +104,7 @@ export function ConstraintsProvider({ children }: { children: ReactNode }) {
 export function useConstraints() {
   const ctx = useContext(ConstraintsContext);
   if (!ctx) {
-    throw new Error("useConstraints must be used within ConstraintsProvider");
+    throw new Error('useConstraints must be used within ConstraintsProvider');
   }
   return ctx;
 }

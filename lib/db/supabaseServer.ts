@@ -2,7 +2,6 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseEnv } from './env';
 import type { ServerSupabaseContext } from '../utils/types/ServerSupabaseContext';
 
-
 export function getSupabaseServer(ctx: ServerSupabaseContext): SupabaseClient {
   const { url, anonKey } = getSupabaseEnv();
 
@@ -14,4 +13,3 @@ export function getSupabaseServer(ctx: ServerSupabaseContext): SupabaseClient {
     },
   });
 }
-

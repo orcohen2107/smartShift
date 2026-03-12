@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import styled from "styled-components";
+import React from 'react';
+import styled from 'styled-components';
 
 const CHECKBOX_SIZE = 16;
 
@@ -16,7 +16,7 @@ type CheckboxProps = {
 };
 
 function sanitizeIdForSvg(id: string): string {
-  return id.replace(/[^a-zA-Z0-9-_]/g, "_");
+  return id.replace(/[^a-zA-Z0-9-_]/g, '_');
 }
 
 export default function Checkbox({
@@ -73,7 +73,7 @@ export default function Checkbox({
 }
 
 const StyledWrapper = styled.div`
-  .checkbox-wrapper input[type="checkbox"] {
+  .checkbox-wrapper input[type='checkbox'] {
     display: none;
   }
 
@@ -84,7 +84,7 @@ const StyledWrapper = styled.div`
     gap: 8px;
   }
 
-  .checkbox-wrapper input[type="checkbox"]:disabled + .terms-label {
+  .checkbox-wrapper input[type='checkbox']:disabled + .terms-label {
     cursor: not-allowed;
     opacity: 0.6;
   }
@@ -97,7 +97,7 @@ const StyledWrapper = styled.div`
 
   @media (prefers-color-scheme: dark) {
     .checkbox-wrapper .terms-label .label-text {
-      color:rgb(24, 24, 27);
+      color: rgb(24, 24, 27);
     }
   }
 
@@ -117,7 +117,9 @@ const StyledWrapper = styled.div`
     stroke: #d4d4d8;
     stroke-dasharray: 800;
     stroke-dashoffset: 0;
-    transition: stroke 0.2s ease, stroke-dashoffset 0.6s ease-in;
+    transition:
+      stroke 0.2s ease,
+      stroke-dashoffset 0.6s ease-in;
   }
 
   .checkbox-wrapper .checkbox-tick {
@@ -129,8 +131,8 @@ const StyledWrapper = styled.div`
 
   @media (prefers-color-scheme: dark) {
     .checkbox-wrapper .checkbox-box {
-      fill:rgb(229, 229, 235);
-      stroke:rgb(5, 5, 6);
+      fill: rgb(229, 229, 235);
+      stroke: rgb(5, 5, 6);
     }
   }
 
@@ -139,12 +141,18 @@ const StyledWrapper = styled.div`
     stroke: #52525b;
   }
 
-  .checkbox-wrapper input[type="checkbox"]:checked + .terms-label .checkbox-box {
+  .checkbox-wrapper
+    input[type='checkbox']:checked
+    + .terms-label
+    .checkbox-box {
     stroke: #10b981;
     stroke-dashoffset: 0;
   }
 
-  .checkbox-wrapper input[type="checkbox"]:checked + .terms-label .checkbox-tick {
+  .checkbox-wrapper
+    input[type='checkbox']:checked
+    + .terms-label
+    .checkbox-tick {
     stroke-dashoffset: 0;
   }
 `;

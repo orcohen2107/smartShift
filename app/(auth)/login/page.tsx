@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { FormEvent, Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseBrowser } from "@/lib/db/supabaseBrowser";
-import { apiFetch } from "@/lib/api/apiFetch";
+import { FormEvent, Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
+import { apiFetch } from '@/lib/api/apiFetch';
 
 type EnsureProfileResponse = {
   profile: {
@@ -16,10 +16,10 @@ type EnsureProfileResponse = {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const registered = searchParams.get("registered") === "1";
-  const confirmEmail = searchParams.get("confirm") === "1";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const registered = searchParams.get('registered') === '1';
+  const confirmEmail = searchParams.get('confirm') === '1';
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -30,9 +30,11 @@ function LoginForm() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCheckingSession(false);
       if (!session) return;
-      apiFetch<EnsureProfileResponse>("/api/profile/ensure", { method: "POST" })
-        .then(() => router.replace("/dashboard"))
-        .catch(() => { /* session אולי לא תקף – נשארים בטופס */ });
+      apiFetch<EnsureProfileResponse>('/api/profile/ensure', { method: 'POST' })
+        .then(() => router.replace('/dashboard'))
+        .catch(() => {
+          /* session אולי לא תקף – נשארים בטופס */
+        });
     });
   }, [router]);
 
@@ -42,25 +44,25 @@ function LoginForm() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowser();
-      const { error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (signInError) {
         throw signInError;
       }
 
       // Ensure profile exists and has a role.
-      await apiFetch<EnsureProfileResponse>("/api/profile/ensure", {
-        method: "POST",
+      await apiFetch<EnsureProfileResponse>('/api/profile/ensure', {
+        method: 'POST',
       });
 
-      router.replace("/dashboard");
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      router.replace('/dashboard');
+    } catch (err: any) {
+      // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error(err);
-      setError(err.message ?? "Login failed");
+      setError(err.message ?? 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -68,16 +70,16 @@ function LoginForm() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+      <div className="flex min-h-[100dvh] min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
         <p className="text-sm text-zinc-400">טוען...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen min-h-[100dvh] items-center justify-center overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-3 py-6 sm:px-4 sm:py-8">
+    <div className="flex min-h-[100dvh] min-h-screen items-center justify-center overflow-x-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-black px-3 py-6 sm:px-4 sm:py-8">
       <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
-        <div className="pointer-events-none absolute -left-32 top-[-80px] hidden h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/40 via-sky-400/30 to-violet-500/30 blur-3xl md:block" />
+        <div className="pointer-events-none absolute top-[-80px] -left-32 hidden h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/40 via-sky-400/30 to-violet-500/30 blur-3xl md:block" />
         <div className="relative flex flex-col md:flex-row-reverse">
           {/* טור טופס התחברות */}
           <div className="w-full p-4 sm:p-6 md:w-1/2 md:p-10 lg:p-12">
@@ -100,7 +102,7 @@ function LoginForm() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-input-placeholder]:text-zinc-500"
+                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm [&::-ms-input-placeholder]:text-zinc-500"
                   placeholder="you@example.com"
                 />
               </div>
@@ -114,7 +116,7 @@ function LoginForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
+                  className="min-h-[44px] w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
@@ -122,8 +124,8 @@ function LoginForm() {
               {registered && !error && (
                 <p className="text-sm text-emerald-300" role="status">
                   {confirmEmail
-                    ? "ההרשמה הושלמה. נא לאשר את המייל ואז להתחבר."
-                    : "ההרשמה הושלמה. כעת תוכל להתחבר."}
+                    ? 'ההרשמה הושלמה. נא לאשר את המייל ואז להתחבר.'
+                    : 'ההרשמה הושלמה. כעת תוכל להתחבר.'}
                 </p>
               )}
               {error && (
@@ -137,12 +139,12 @@ function LoginForm() {
                 disabled={loading}
                 className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-emerald-500 px-3 py-2.5 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 disabled:opacity-60"
               >
-                {loading ? "מתחבר..." : "התחברות"}
+                {loading ? 'מתחבר...' : 'התחברות'}
               </button>
             </form>
 
             <p className="mt-4 text-center text-xs text-zinc-400">
-              עדיין אין לך משתמש?{" "}
+              עדיין אין לך משתמש?{' '}
               <a
                 href="/signup"
                 className="font-medium text-emerald-300 hover:text-emerald-200"
@@ -155,7 +157,7 @@ function LoginForm() {
           {/* טור צד ויזואלי / טקסטואלי */}
           <div className="hidden w-1/2 flex-col justify-between border-l border-zinc-800/70 bg-gradient-to-br from-zinc-900/80 via-zinc-900/40 to-black/60 p-8 md:flex lg:p-10">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+              <p className="text-xs font-semibold tracking-[0.2em] text-emerald-300/80 uppercase">
                 מערכת משמרות חכמה
               </p>
               <h2 className="mt-3 text-xl font-semibold text-zinc-50 lg:text-2xl">
@@ -207,4 +209,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

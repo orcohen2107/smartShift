@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api/apiFetch";
-import { useAssignments } from "@/contexts/AssignmentsContext";
-import { useProfile } from "@/contexts/ProfileContext";
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api/apiFetch';
+import { useAssignments } from '@/contexts/AssignmentsContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import type {
   Constraint,
   Shift,
   ShiftBoard,
   Worker,
-} from "@/lib/utils/interfaces";
-import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
-import Checkbox from "@/components/Checkbox";
-import Dropdown from "@/components/Dropdown";
+} from '@/lib/utils/interfaces';
+import { ConstraintStatus, Role, ShiftType } from '@/lib/utils/enums';
+import Checkbox from '@/components/Checkbox';
+import Dropdown from '@/components/Dropdown';
 
 type CreateShiftInput = {
   date: string;
@@ -38,20 +38,20 @@ export default function AssignmentsPage() {
   const profile = useProfile();
   const [mounted, setMounted] = useState(false);
   const todayStr = useMemo(() => {
-    if (!mounted) return "";
+    if (!mounted) return '';
     const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
   }, [mounted]);
   const [createShiftForm, setCreateShiftForm] = useState<CreateShiftInput>({
-    date: "",
+    date: '',
     type: ShiftType.Day,
   });
-  const [initialWorkerId, setInitialWorkerId] = useState<string>("");
-  const [newWorkerName, setNewWorkerName] = useState("");
+  const [initialWorkerId, setInitialWorkerId] = useState<string>('');
+  const [newWorkerName, setNewWorkerName] = useState('');
   const [addingWorker, setAddingWorker] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("calendar");
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const [newBoardName, setNewBoardName] = useState("");
+  const [newBoardName, setNewBoardName] = useState('');
   const [newBoardWorkersPerShift, setNewBoardWorkersPerShift] = useState(1);
   const [newBoardSinglePerson, setNewBoardSinglePerson] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
@@ -69,12 +69,13 @@ export default function AssignmentsPage() {
     workerId: string;
     workerName: string;
   } | null>(null);
-  const [assigningFromConstraintModal, setAssigningFromConstraintModal] = useState(false);
+  const [assigningFromConstraintModal, setAssigningFromConstraintModal] =
+    useState(false);
 
   useEffect(() => {
     if (profile === null) return;
     if (profile.role !== Role.Manager) {
-      router.replace("/dashboard");
+      router.replace('/dashboard');
     }
   }, [profile, router]);
 
@@ -94,10 +95,7 @@ export default function AssignmentsPage() {
     return shifts.filter((s) => s.board_id === selectedBoardId);
   }, [overview?.shifts, selectedBoardId]);
 
-  const shiftsAll: Shift[] = useMemo(
-    () => shiftsFiltered,
-    [shiftsFiltered],
-  );
+  const shiftsAll: Shift[] = useMemo(() => shiftsFiltered, [shiftsFiltered]);
 
   const workersById: Record<string, Worker> = useMemo(() => {
     const map: Record<string, Worker> = {};
@@ -110,25 +108,28 @@ export default function AssignmentsPage() {
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
     const list = [...(overview?.workers ?? [])];
-    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? "").trim();
+    const name = (w: Worker) => (w.full_name ?? w.email ?? w.id ?? '').trim();
     return list.sort((a, b) => {
       if (a.is_reserves !== b.is_reserves) return a.is_reserves ? 1 : -1;
-      return name(a).localeCompare(name(b), "he");
+      return name(a).localeCompare(name(b), 'he');
     });
   }, [overview?.workers]);
 
   const workerDisplayName = (w: Worker | undefined) =>
-    w ? `${w.full_name ?? w.email ?? w.id ?? "—"}${w.is_reserves ? " (מילואים)" : ""}` : "—";
+    w
+      ? `${w.full_name ?? w.email ?? w.id ?? '—'}${w.is_reserves ? ' (מילואים)' : ''}`
+      : '—';
 
-  const constraintsByWorkerDateType: Record<string, Constraint[]> = useMemo(() => {
-    const map: Record<string, Constraint[]> = {};
-    overview?.constraints.forEach((c) => {
-      const key = `${c.worker_id}-${c.date}-${c.type}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(c);
-    });
-    return map;
-  }, [overview]);
+  const constraintsByWorkerDateType: Record<string, Constraint[]> =
+    useMemo(() => {
+      const map: Record<string, Constraint[]> = {};
+      overview?.constraints.forEach((c) => {
+        const key = `${c.worker_id}-${c.date}-${c.type}`;
+        if (!map[key]) map[key] = [];
+        map[key].push(c);
+      });
+      return map;
+    }, [overview]);
 
   function getAssignmentsForShift(shiftId: string) {
     return overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [];
@@ -137,25 +138,25 @@ export default function AssignmentsPage() {
   /** בודק אם לעובד יש אילוץ בתאריך הנתון (כל סוג) */
   function hasConstraintForDate(workerId: string, date: string): boolean {
     return (overview?.constraints ?? []).some(
-      (c) => c.worker_id === workerId && c.date === date,
+      (c) => c.worker_id === workerId && c.date === date
     );
   }
 
   function hasUnavailableConstraint(
     profileId: string | null,
     date: string,
-    shiftType: ShiftType,
+    shiftType: ShiftType
   ) {
     if (!profileId) return false;
     const key = `${profileId}-${date}-${shiftType}`;
     return (constraintsByWorkerDateType[key] ?? []).some(
-      (c) => c.status === ConstraintStatus.Unavailable,
+      (c) => c.status === ConstraintStatus.Unavailable
     );
   }
 
   const selectedBoard = useMemo(
     () => overview?.boards?.find((b) => b.id === selectedBoardId) ?? null,
-    [overview?.boards, selectedBoardId],
+    [overview?.boards, selectedBoardId]
   );
 
   async function handleCreateBoard(e: React.FormEvent) {
@@ -164,15 +165,15 @@ export default function AssignmentsPage() {
     setError(null);
     setCreatingBoard(true);
     try {
-      const board = await apiFetch<ShiftBoard>("/api/boards", {
-        method: "POST",
+      const board = await apiFetch<ShiftBoard>('/api/boards', {
+        method: 'POST',
         json: {
           name: newBoardName.trim(),
           workers_per_shift: newBoardWorkersPerShift,
           single_person_for_day: newBoardSinglePerson,
         },
       });
-      setNewBoardName("");
+      setNewBoardName('');
       setNewBoardWorkersPerShift(1);
       setNewBoardSinglePerson(false);
       setShowCreateBoard(false);
@@ -183,7 +184,7 @@ export default function AssignmentsPage() {
       }));
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to create board");
+      setError(err instanceof Error ? err.message : 'Failed to create board');
     } finally {
       setCreatingBoard(false);
     }
@@ -193,7 +194,7 @@ export default function AssignmentsPage() {
     e.preventDefault();
     setError(null);
     if (!selectedBoardId || !selectedBoard) {
-      setError("יש לבחור לוח שיבוצים לפני יצירת משמרת");
+      setError('יש לבחור לוח שיבוצים לפני יצירת משמרת');
       return;
     }
     setCreatingShift(true);
@@ -203,8 +204,8 @@ export default function AssignmentsPage() {
         : createShiftForm.type;
       const requiredCount =
         createShiftForm.required_count ?? selectedBoard.workers_per_shift ?? 1;
-      const createdShift = await apiFetch<Shift>("/api/shifts", {
-        method: "POST",
+      const createdShift = await apiFetch<Shift>('/api/shifts', {
+        method: 'POST',
         json: {
           date: createShiftForm.date,
           type,
@@ -218,22 +219,30 @@ export default function AssignmentsPage() {
         shifts: [...prev.shifts, createdShift],
       }));
 
-      let assignment: { id: string; shift_id: string; worker_id: string; created_at: string } | null = null;
+      let assignment: {
+        id: string;
+        shift_id: string;
+        worker_id: string;
+        created_at: string;
+      } | null = null;
       if (initialWorkerId) {
-        const workerName = workersById[initialWorkerId]?.full_name ?? workersById[initialWorkerId]?.email ?? "העובד";
+        const workerName =
+          workersById[initialWorkerId]?.full_name ??
+          workersById[initialWorkerId]?.email ??
+          'העובד';
         if (hasConstraintForDate(initialWorkerId, createShiftForm.date)) {
           setPendingConstraintConfirm({
             shiftId: createdShift.id,
             workerId: initialWorkerId,
             workerName,
           });
-          setInitialWorkerId("");
+          setInitialWorkerId('');
         } else {
-          assignment = await apiFetch("/api/assignments", {
-            method: "POST",
+          assignment = await apiFetch('/api/assignments', {
+            method: 'POST',
             json: { shift_id: createdShift.id, worker_id: initialWorkerId },
           });
-          setInitialWorkerId("");
+          setInitialWorkerId('');
           updateOverview((prev) => ({
             ...prev,
             assignments: [...prev.assignments, assignment!],
@@ -242,15 +251,20 @@ export default function AssignmentsPage() {
       }
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to create shift");
+      setError(err instanceof Error ? err.message : 'Failed to create shift');
     } finally {
       setCreatingShift(false);
     }
   }
 
   async function doAssign(shiftId: string, workerId: string) {
-    const assignment = await apiFetch<{ id: string; shift_id: string; worker_id: string; created_at: string }>("/api/assignments", {
-      method: "POST",
+    const assignment = await apiFetch<{
+      id: string;
+      shift_id: string;
+      worker_id: string;
+      created_at: string;
+    }>('/api/assignments', {
+      method: 'POST',
       json: { shift_id: shiftId, worker_id: workerId },
     });
     updateOverview((prev) => ({
@@ -261,7 +275,10 @@ export default function AssignmentsPage() {
 
   async function handleAssign(shift: Shift, workerId: string) {
     setError(null);
-    const workerName = workersById[workerId]?.full_name ?? workersById[workerId]?.email ?? "העובד";
+    const workerName =
+      workersById[workerId]?.full_name ??
+      workersById[workerId]?.email ??
+      'העובד';
     if (hasConstraintForDate(workerId, shift.date)) {
       setPendingConstraintConfirm({ shiftId: shift.id, workerId, workerName });
       return;
@@ -270,7 +287,7 @@ export default function AssignmentsPage() {
       await doAssign(shift.id, workerId);
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to assign worker");
+      setError(err instanceof Error ? err.message : 'Failed to assign worker');
     }
   }
 
@@ -280,7 +297,7 @@ export default function AssignmentsPage() {
     try {
       await apiFetch(
         `/api/assignments?assignment_id=${encodeURIComponent(assignmentId)}`,
-        { method: "DELETE" },
+        { method: 'DELETE' }
       );
       updateOverview((prev) => ({
         ...prev,
@@ -288,7 +305,9 @@ export default function AssignmentsPage() {
       }));
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to remove assignment");
+      setError(
+        err instanceof Error ? err.message : 'Failed to remove assignment'
+      );
     } finally {
       setUnassigningId(null);
     }
@@ -300,18 +319,18 @@ export default function AssignmentsPage() {
     setError(null);
     setAddingWorker(true);
     try {
-      const worker = await apiFetch<Worker>("/api/workers", {
-        method: "POST",
+      const worker = await apiFetch<Worker>('/api/workers', {
+        method: 'POST',
         json: { full_name: newWorkerName.trim() },
       });
-      setNewWorkerName("");
+      setNewWorkerName('');
       updateOverview((prev) => ({
         ...prev,
         workers: [...prev.workers, worker],
       }));
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to add worker");
+      setError(err instanceof Error ? err.message : 'Failed to add worker');
     } finally {
       setAddingWorker(false);
     }
@@ -321,21 +340,26 @@ export default function AssignmentsPage() {
     return shiftsFiltered.find((s) => s.date === date && s.type === t);
   }
 
-  async function ensureShiftAndAssign(date: string, shiftType: ShiftType, workerId: string) {
+  async function ensureShiftAndAssign(
+    date: string,
+    shiftType: ShiftType,
+    workerId: string
+  ) {
     setAssigningCell(null);
     setError(null);
     if (!selectedBoardId || !selectedBoard) {
-      setError("יש לבחור לוח שיבוצים לפני שיבוץ");
+      setError('יש לבחור לוח שיבוצים לפני שיבוץ');
       return;
     }
     setAssigningCellKey(`${date}-${shiftType}-${workerId}`);
     try {
-      const type =
-        selectedBoard.single_person_for_day ? ShiftType.FullDay : shiftType;
+      const type = selectedBoard.single_person_for_day
+        ? ShiftType.FullDay
+        : shiftType;
       let shift = getShiftByDateType(date, type);
       if (!shift) {
-        shift = await apiFetch<Shift>("/api/shifts", {
-          method: "POST",
+        shift = await apiFetch<Shift>('/api/shifts', {
+          method: 'POST',
           json: {
             date,
             type,
@@ -348,16 +372,23 @@ export default function AssignmentsPage() {
           shifts: [...prev.shifts, shift!],
         }));
       }
-      const workerName = workersById[workerId]?.full_name ?? workersById[workerId]?.email ?? "העובד";
+      const workerName =
+        workersById[workerId]?.full_name ??
+        workersById[workerId]?.email ??
+        'העובד';
       if (hasConstraintForDate(workerId, date)) {
         setAssigningCellKey(null);
-        setPendingConstraintConfirm({ shiftId: shift.id, workerId, workerName });
+        setPendingConstraintConfirm({
+          shiftId: shift.id,
+          workerId,
+          workerName,
+        });
         return;
       }
       await doAssign(shift.id, workerId);
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to assign");
+      setError(err instanceof Error ? err.message : 'Failed to assign');
     } finally {
       setAssigningCellKey(null);
     }
@@ -373,29 +404,37 @@ export default function AssignmentsPage() {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       out.push(
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       );
     }
     return out;
   }
 
-  const DAY_NAMES_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+  const DAY_NAMES_HE = [
+    'ראשון',
+    'שני',
+    'שלישי',
+    'רביעי',
+    'חמישי',
+    'שישי',
+    'שבת',
+  ];
 
   function formatDateHe(dateStr: string): string {
-    const [y, m, d] = dateStr.split("-");
+    const [y, m, d] = dateStr.split('-');
     return `${d}.${m}.${y}`;
   }
 
   function getDayName(dateStr: string): string {
-    const [y, m, d] = dateStr.split("-").map(Number);
+    const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
-    return DAY_NAMES_HE[date.getDay()] ?? "";
+    return DAY_NAMES_HE[date.getDay()] ?? '';
   }
 
   function isDatePast(dateStr: string): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [y, m, d] = dateStr.split("-").map(Number);
+    const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     return date < today;
   }
@@ -419,28 +458,30 @@ export default function AssignmentsPage() {
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          <p>{loading ? "טוען..." : "שגיאה בטעינה"}</p>
+          <p>{loading ? 'טוען...' : 'שגיאה בטעינה'}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="relative space-y-6">
       {loading && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60">
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">טוען נתונים...</p>
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              טוען נתונים...
+            </p>
           </div>
         </div>
       )}
 
       {showCreateBoard && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
           <form
             onSubmit={handleCreateBoard}
-            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 my-auto"
+            className="my-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
           >
             <h3 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               יצירת לוח שיבוצים חדש
@@ -456,7 +497,7 @@ export default function AssignmentsPage() {
                   value={newBoardName}
                   onChange={(e) => setNewBoardName(e.target.value)}
                   placeholder="למשל: שגרה, מלחמה"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -480,9 +521,11 @@ export default function AssignmentsPage() {
                     min={1}
                     value={newBoardWorkersPerShift}
                     onChange={(e) =>
-                      setNewBoardWorkersPerShift(Math.max(1, parseInt(e.target.value, 10) || 1))
+                      setNewBoardWorkersPerShift(
+                        Math.max(1, parseInt(e.target.value, 10) || 1)
+                      )
                     }
-                    className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+                    className="w-full cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
                   />
                 </div>
               )}
@@ -492,7 +535,7 @@ export default function AssignmentsPage() {
                 type="button"
                 onClick={() => {
                   setShowCreateBoard(false);
-                  setNewBoardName("");
+                  setNewBoardName('');
                   setNewBoardWorkersPerShift(1);
                   setNewBoardSinglePerson(false);
                 }}
@@ -503,9 +546,9 @@ export default function AssignmentsPage() {
               <button
                 type="submit"
                 disabled={creatingBoard || !newBoardName.trim()}
-                className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {creatingBoard ? "יוצר…" : "צור לוח"}
+                {creatingBoard ? 'יוצר…' : 'צור לוח'}
               </button>
             </div>
           </form>
@@ -513,13 +556,14 @@ export default function AssignmentsPage() {
       )}
 
       {pendingConstraintConfirm && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 my-auto">
+        <div className="fixed inset-0 z-30 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
+          <div className="my-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
             <h3 className="mb-3 text-base font-semibold text-zinc-800 dark:text-zinc-200">
               אילוץ בתאריך
             </h3>
             <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-              ל־{pendingConstraintConfirm.workerName} יש אילוץ באותו יום. אתה בטוח שאתה רוצה לשבץ אותו?
+              ל־{pendingConstraintConfirm.workerName} יש אילוץ באותו יום. אתה
+              בטוח שאתה רוצה לשבץ אותו?
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -540,7 +584,11 @@ export default function AssignmentsPage() {
                     setPendingConstraintConfirm(null);
                   } catch (err: unknown) {
                     console.error(err);
-                    setError(err instanceof Error ? err.message : "Failed to assign worker");
+                    setError(
+                      err instanceof Error
+                        ? err.message
+                        : 'Failed to assign worker'
+                    );
                   } finally {
                     setAssigningFromConstraintModal(false);
                   }
@@ -548,7 +596,7 @@ export default function AssignmentsPage() {
                 disabled={assigningFromConstraintModal}
                 className="cursor-pointer rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 shadow-sm transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {assigningFromConstraintModal ? "טוען…" : "כן, לשבץ"}
+                {assigningFromConstraintModal ? 'טוען…' : 'כן, לשבץ'}
               </button>
             </div>
           </div>
@@ -564,12 +612,12 @@ export default function AssignmentsPage() {
             ניהול משמרות ושיבוץ כוננים (שינויים — מנהל בלבד).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 min-w-0 overflow-x-auto md:overflow-visible">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-x-auto md:overflow-visible">
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:bg-zinc-800"
             title="רענן נתונים"
           >
             רענן
@@ -578,13 +626,13 @@ export default function AssignmentsPage() {
             <div className="w-40">
               <Dropdown
                 placeholder="כל הלוחות"
-                value={selectedBoardId ?? ""}
+                value={selectedBoardId ?? ''}
                 onSelect={(id) => setSelectedBoardId(id || null)}
                 items={[
-                  { value: "", label: "כל הלוחות" },
+                  { value: '', label: 'כל הלוחות' },
                   ...(overview?.boards?.map((b) => ({
                     value: b.id,
-                    label: `${b.name}${b.single_person_for_day ? " (אדם יחיד)" : ` (${b.workers_per_shift} במשמרת)`}`,
+                    label: `${b.name}${b.single_person_for_day ? ' (אדם יחיד)' : ` (${b.workers_per_shift} במשמרת)`}`,
                   })) ?? []),
                 ]}
               />
@@ -600,15 +648,15 @@ export default function AssignmentsPage() {
           <div className="inline-flex rounded-full border border-zinc-300 bg-zinc-50 p-0.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-900/80">
             <button
               type="button"
-              onClick={() => setViewMode("list")}
-              className={`cursor-pointer rounded-full px-3 py-1 ${viewMode === "list" ? "bg-emerald-500 text-emerald-950 shadow-sm" : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"}`}
+              onClick={() => setViewMode('list')}
+              className={`cursor-pointer rounded-full px-3 py-1 ${viewMode === 'list' ? 'bg-emerald-500 text-emerald-950 shadow-sm' : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'}`}
             >
               רשימה
             </button>
             <button
               type="button"
-              onClick={() => setViewMode("calendar")}
-              className={`cursor-pointer rounded-full px-3 py-1 ${viewMode === "calendar" ? "bg-emerald-500 text-emerald-950 shadow-sm" : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"}`}
+              onClick={() => setViewMode('calendar')}
+              className={`cursor-pointer rounded-full px-3 py-1 ${viewMode === 'calendar' ? 'bg-emerald-500 text-emerald-950 shadow-sm' : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'}`}
             >
               לוח
             </button>
@@ -620,24 +668,24 @@ export default function AssignmentsPage() {
         onSubmit={handleAddWorker}
         className="flex flex-wrap items-end gap-2 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900/80"
       >
-        <div className="space-y-1 min-w-[180px]">
+        <div className="min-w-[180px] space-y-1">
           <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
             הוספת כונן לרשימת הכוננים (לפני הרשמה)
           </label>
-          <input  
+          <input
             type="text"
             value={newWorkerName}
             onChange={(e) => setNewWorkerName(e.target.value)}
             placeholder="שם מלא"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
           />
         </div>
         <button
           type="submit"
           disabled={addingWorker || !newWorkerName.trim()}
-          className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {addingWorker ? "מוסיף…" : "הוסף לרשימה"}
+          {addingWorker ? 'מוסיף…' : 'הוסף לרשימה'}
         </button>
       </form>
 
@@ -669,7 +717,7 @@ export default function AssignmentsPage() {
                   date: e.target.value,
                 }))
               }
-              className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark]"
+              className="w-full cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark]"
             />
           </div>
           {!selectedBoard?.single_person_for_day && (
@@ -686,8 +734,8 @@ export default function AssignmentsPage() {
                   }))
                 }
                 items={[
-                  { value: "day", label: "משמרת יום" },
-                  { value: "night", label: "משמרת לילה" },
+                  { value: 'day', label: 'משמרת יום' },
+                  { value: 'night', label: 'משמרת לילה' },
                 ]}
               />
             </div>
@@ -701,10 +749,10 @@ export default function AssignmentsPage() {
               value={initialWorkerId}
               onSelect={setInitialWorkerId}
               items={[
-                { value: "", label: "ללא שיבוץ התחלתי" },
+                { value: '', label: 'ללא שיבוץ התחלתי' },
                 ...workersSorted.map((w) => ({
                   value: w.id,
-                  label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}`,
+                  label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}`,
                 })),
               ]}
             />
@@ -713,7 +761,7 @@ export default function AssignmentsPage() {
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           רק מנהלים יכולים ליצור או לערוך משמרות. כוננים יכולים לצפות בשיבוצים.
           {!selectedBoard && (
-            <span className="block mt-1 text-amber-600 dark:text-amber-400">
+            <span className="mt-1 block text-amber-600 dark:text-amber-400">
               יש לבחור לוח שיבוצים כדי ליצור משמרת חדשה.
             </span>
           )}
@@ -722,14 +770,14 @@ export default function AssignmentsPage() {
           <button
             type="submit"
             disabled={!selectedBoard || creatingShift}
-            className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {creatingShift ? "יוצר…" : "יצירת משמרת"}
+            {creatingShift ? 'יוצר…' : 'יצירת משמרת'}
           </button>
         </div>
       </form>
 
-      {viewMode === "calendar" && (
+      {viewMode === 'calendar' && (
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
@@ -745,7 +793,8 @@ export default function AssignmentsPage() {
                 →
               </button>
               <span className="min-w-[120px] text-center text-sm text-zinc-700 dark:text-zinc-300">
-                {weekDates[0] && formatDateHe(weekDates[0])} – {weekDates[6] && formatDateHe(weekDates[6])}
+                {weekDates[0] && formatDateHe(weekDates[0])} –{' '}
+                {weekDates[6] && formatDateHe(weekDates[6])}
               </span>
               <button
                 type="button"
@@ -757,59 +806,77 @@ export default function AssignmentsPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto -mx-3 sm:mx-0 rounded-xl sm:rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/80">
-              <table className="w-full min-w-[480px] sm:min-w-[600px] text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-700">
-                    <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">תאריך</th>
-                    {selectedBoard?.single_person_for_day ? (
-                      <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">כל היום</th>
-                    ) : (
-                      <>
-                        <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">משמרת יום</th>
-                        <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">משמרת לילה</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {weekDates.map((date) => {
-                    const isFullDay = selectedBoard?.single_person_for_day ?? false;
-                    const shiftDay = getShiftByDateType(date, ShiftType.Day);
-                    const shiftNight = getShiftByDateType(date, ShiftType.Night);
-                    const shiftFullDay = getShiftByDateType(date, ShiftType.FullDay);
-                    const shiftForDay = isFullDay ? shiftFullDay : shiftDay;
-                    const shiftForNight = isFullDay ? null : shiftNight;
-                    const assignDay = shiftForDay
-                      ? getAssignmentsForShift(shiftForDay.id)
-                      : [];
-                    const assignNight = shiftForNight
-                      ? getAssignmentsForShift(shiftForNight.id)
-                      : [];
-                    const isPast = isDatePast(date);
-                    const canEdit = !isPast;
+          <div className="-mx-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white sm:mx-0 sm:rounded-2xl dark:border-zinc-800 dark:bg-zinc-900/80">
+            <table className="w-full min-w-[480px] text-sm sm:min-w-[600px]">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-700">
+                  <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                    תאריך
+                  </th>
+                  {selectedBoard?.single_person_for_day ? (
+                    <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                      כל היום
+                    </th>
+                  ) : (
+                    <>
+                      <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                        משמרת יום
+                      </th>
+                      <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                        משמרת לילה
+                      </th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {weekDates.map((date) => {
+                  const isFullDay =
+                    selectedBoard?.single_person_for_day ?? false;
+                  const shiftDay = getShiftByDateType(date, ShiftType.Day);
+                  const shiftNight = getShiftByDateType(date, ShiftType.Night);
+                  const shiftFullDay = getShiftByDateType(
+                    date,
+                    ShiftType.FullDay
+                  );
+                  const shiftForDay = isFullDay ? shiftFullDay : shiftDay;
+                  const shiftForNight = isFullDay ? null : shiftNight;
+                  const assignDay = shiftForDay
+                    ? getAssignmentsForShift(shiftForDay.id)
+                    : [];
+                  const assignNight = shiftForNight
+                    ? getAssignmentsForShift(shiftForNight.id)
+                    : [];
+                  const isPast = isDatePast(date);
+                  const canEdit = !isPast;
 
-                    const renderCell = (
-                      shift: Shift | null | undefined,
-                      assigns: { id: string; worker_id: string }[],
-                      cellType: ShiftType,
-                    ) => {
-                      const isAssigningHere = assigningCellKey?.startsWith(`${date}-${cellType}-`);
-                      return (
+                  const renderCell = (
+                    shift: Shift | null | undefined,
+                    assigns: { id: string; worker_id: string }[],
+                    cellType: ShiftType
+                  ) => {
+                    const isAssigningHere = assigningCellKey?.startsWith(
+                      `${date}-${cellType}-`
+                    );
+                    return (
                       <td className="p-2 align-top" key={String(cellType)}>
                         <div
                           className={`min-h-[44px] rounded-lg border border-dashed p-2 dark:border-zinc-700 ${
                             !shift && isPast
-                              ? "border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50"
-                              : "border-zinc-200 dark:border-zinc-700"
-                          } ${!shift && isPast ? "opacity-60" : ""}`}
+                              ? 'border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50'
+                              : 'border-zinc-200 dark:border-zinc-700'
+                          } ${!shift && isPast ? 'opacity-60' : ''}`}
                         >
                           {isAssigningHere && (
-                            <span className="text-xs text-emerald-600 dark:text-emerald-400">משבץ…</span>
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                              משבץ…
+                            </span>
                           )}
                           {assigns.map((a) => {
                             const w = workersById[a.worker_id];
-                            const hasConstraint = shift && hasConstraintForDate(a.worker_id, shift.date);
+                            const hasConstraint =
+                              shift &&
+                              hasConstraintForDate(a.worker_id, shift.date);
                             return (
                               <div
                                 key={a.id}
@@ -822,8 +889,18 @@ export default function AssignmentsPage() {
                                       className="inline-flex shrink-0 text-amber-500"
                                       title="קיים אילוץ בתאריך זה"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
-                                        <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="currentColor"
+                                        className="h-3.5 w-3.5"
+                                        aria-hidden
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+                                          clipRule="evenodd"
+                                        />
                                       </svg>
                                     </span>
                                   )}
@@ -835,7 +912,7 @@ export default function AssignmentsPage() {
                                     disabled={unassigningId === a.id}
                                     className="cursor-pointer text-red-500 hover:underline disabled:opacity-50"
                                   >
-                                    {unassigningId === a.id ? "מסיר…" : "הסר"}
+                                    {unassigningId === a.id ? 'מסיר…' : 'הסר'}
                                   </button>
                                 )}
                               </div>
@@ -851,54 +928,60 @@ export default function AssignmentsPage() {
                                   shiftId: shift?.id ?? null,
                                 })
                               }
-                              className="cursor-pointer mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                              className="mt-1 cursor-pointer text-xs font-medium text-emerald-600 dark:text-emerald-400"
                             >
                               + שבץ כונן
                             </button>
                           )}
                           {!shift && isPast && !isAssigningHere && (
-                            <span className="mt-1 text-xs text-zinc-400">—</span>
+                            <span className="mt-1 text-xs text-zinc-400">
+                              —
+                            </span>
                           )}
                         </div>
                       </td>
                     );
-                    };
+                  };
 
-                    return (
-                      <tr
-                        key={date}
-                        className="border-b border-zinc-100 dark:border-zinc-800"
-                      >
-                        <td className="p-2 font-medium text-zinc-900 dark:text-zinc-100">
-                          <span className="text-zinc-500 dark:text-zinc-400">
-                            {getDayName(date)}
-                          </span>{" "}
-                          {formatDateHe(date)}
-                        </td>
-                        {isFullDay ? (
-                          renderCell(shiftForDay, assignDay, ShiftType.FullDay)
-                        ) : (
-                          <>
-                            {renderCell(shiftForDay, assignDay, ShiftType.Day)}
-                            {renderCell(shiftForNight, assignNight, ShiftType.Night)}
-                          </>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  return (
+                    <tr
+                      key={date}
+                      className="border-b border-zinc-100 dark:border-zinc-800"
+                    >
+                      <td className="p-2 font-medium text-zinc-900 dark:text-zinc-100">
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          {getDayName(date)}
+                        </span>{' '}
+                        {formatDateHe(date)}
+                      </td>
+                      {isFullDay ? (
+                        renderCell(shiftForDay, assignDay, ShiftType.FullDay)
+                      ) : (
+                        <>
+                          {renderCell(shiftForDay, assignDay, ShiftType.Day)}
+                          {renderCell(
+                            shiftForNight,
+                            assignNight,
+                            ShiftType.Night
+                          )}
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           {assigningCell && (
             <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4">
               <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  שיבוץ ל־{formatDateHe(assigningCell.date)} –{" "}
-                  {assigningCell.type === "full_day"
-                    ? "כל היום"
-                    : assigningCell.type === "day"
-                      ? "יום"
-                      : "לילה"}
+                  שיבוץ ל־{formatDateHe(assigningCell.date)} –{' '}
+                  {assigningCell.type === 'full_day'
+                    ? 'כל היום'
+                    : assigningCell.type === 'day'
+                      ? 'יום'
+                      : 'לילה'}
                 </p>
                 <div className="mb-3">
                   <Dropdown
@@ -909,11 +992,11 @@ export default function AssignmentsPage() {
                       void ensureShiftAndAssign(
                         assigningCell.date,
                         assigningCell.type,
-                        workerId,
+                        workerId
                       );
                     }}
                     items={[
-                      { value: "", label: "בחירת כונן…" },
+                      { value: '', label: 'בחירת כונן…' },
                       ...workersSorted.map((w) => ({
                         value: w.id,
                         label: workerDisplayName(w),
@@ -924,7 +1007,7 @@ export default function AssignmentsPage() {
                 <button
                   type="button"
                   onClick={() => setAssigningCell(null)}
-                  className="cursor-pointer w-full rounded-xl border border-zinc-300 py-2 text-sm dark:border-zinc-700"
+                  className="w-full cursor-pointer rounded-xl border border-zinc-300 py-2 text-sm dark:border-zinc-700"
                 >
                   ביטול
                 </button>
@@ -934,146 +1017,158 @@ export default function AssignmentsPage() {
         </section>
       )}
 
-      {viewMode === "list" && (
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-          משמרות (יום + לילה)
-        </h2>
-        {shiftsAll.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            אין משמרות מוגדרות.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {shiftsAll.map((shift) => {
-              const shiftAssignments = getAssignmentsForShift(shift.id);
-              return (
-                <div
-                  key={shift.id}
-                  className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatDateHe(shift.date)} ·{" "}
-                        {shift.type === "full_day"
-                          ? "כל היום"
-                          : shift.type === "day"
-                            ? "יום"
-                            : "לילה"}
-                      </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {shiftAssignments.length} כוננים שובצו למשמרת זו
+      {viewMode === 'list' && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+            משמרות (יום + לילה)
+          </h2>
+          {shiftsAll.length === 0 ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              אין משמרות מוגדרות.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {shiftsAll.map((shift) => {
+                const shiftAssignments = getAssignmentsForShift(shift.id);
+                return (
+                  <div
+                    key={shift.id}
+                    className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                          {formatDateHe(shift.date)} ·{' '}
+                          {shift.type === 'full_day'
+                            ? 'כל היום'
+                            : shift.type === 'day'
+                              ? 'יום'
+                              : 'לילה'}
+                        </div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {shiftAssignments.length} כוננים שובצו למשמרת זו
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1">
-                      <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                        שובצו למשמרת
-                      </div>
-                      {shiftAssignments.length === 0 ? (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          עדיין אין כוננים שובצו למשמרת זו.
-                        </p>
-                      ) : (
-                        <ul className="space-y-1 text-xs">
-                          {shiftAssignments.map((a) => {
-                            const worker = workersById[a.worker_id];
-                            const hasConstraint = hasConstraintForDate(a.worker_id, shift.date);
-                            const unavailable = hasUnavailableConstraint(
-                              worker?.user_id ?? null,
-                              shift.date,
-                              shift.type,
-                            );
-                            return (
-                              <li
-                                key={a.id}
-                                className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center gap-1 font-medium text-zinc-900 dark:text-zinc-100">
-                                    {workerDisplayName(worker)}
-                                    {hasConstraint && (
-                                      <span
-                                        className="inline-flex shrink-0 text-amber-500"
-                                        title="קיים אילוץ בתאריך זה"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
-                                          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
-                                        </svg>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          שובצו למשמרת
+                        </div>
+                        {shiftAssignments.length === 0 ? (
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            עדיין אין כוננים שובצו למשמרת זו.
+                          </p>
+                        ) : (
+                          <ul className="space-y-1 text-xs">
+                            {shiftAssignments.map((a) => {
+                              const worker = workersById[a.worker_id];
+                              const hasConstraint = hasConstraintForDate(
+                                a.worker_id,
+                                shift.date
+                              );
+                              const unavailable = hasUnavailableConstraint(
+                                worker?.user_id ?? null,
+                                shift.date,
+                                shift.type
+                              );
+                              return (
+                                <li
+                                  key={a.id}
+                                  className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="inline-flex items-center gap-1 font-medium text-zinc-900 dark:text-zinc-100">
+                                      {workerDisplayName(worker)}
+                                      {hasConstraint && (
+                                        <span
+                                          className="inline-flex shrink-0 text-amber-500"
+                                          title="קיים אילוץ בתאריך זה"
+                                        >
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            className="h-3.5 w-3.5"
+                                            aria-hidden
+                                          >
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                        </span>
+                                      )}
+                                    </span>
+                                    {worker && !worker.user_id && (
+                                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                                        (טרם נרשם)
                                       </span>
                                     )}
-                                  </span>
-                                  {worker && !worker.user_id && (
-                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                                      (טרם נרשם)
-                                    </span>
-                                  )}
-                                  {unavailable && (
-                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
-                                      לא זמין
-                                    </span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => handleUnassign(a.id)}
-                                  disabled={unassigningId === a.id}
-                                  className="cursor-pointer text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
-                                >
-                                  {unassigningId === a.id ? "מסיר…" : "הסרה"}
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                        שיבוץ כונן נוסף
+                                    {unavailable && (
+                                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-800 uppercase dark:bg-amber-500/20 dark:text-amber-300">
+                                        לא זמין
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => handleUnassign(a.id)}
+                                    disabled={unassigningId === a.id}
+                                    className="cursor-pointer text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
+                                  >
+                                    {unassigningId === a.id ? 'מסיר…' : 'הסרה'}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
                       </div>
-                      <Dropdown
-                        placeholder="בחירת כונן…"
-                        value=""
-                        onSelect={(workerId) => {
-                          if (!workerId) return;
-                          void handleAssign(shift, workerId);
-                        }}
-                        items={[
-                          { value: "", label: "בחירת כונן…" },
-                          ...workersSorted.map((w) => {
-                            const unavailable = hasUnavailableConstraint(
-                              w.user_id ?? null,
-                              shift.date,
-                              shift.type,
-                            );
-                            return {
-                              value: w.id,
-                              label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}${unavailable ? " (לא זמין)" : ""}`,
-                            };
-                          }),
-                        ]}
-                      />
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                        אם כונן מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן
-                        אזהרה, אך לא תהיה חסימה של השיבוץ.
-                      </p>
+
+                      <div className="space-y-1">
+                        <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          שיבוץ כונן נוסף
+                        </div>
+                        <Dropdown
+                          placeholder="בחירת כונן…"
+                          value=""
+                          onSelect={(workerId) => {
+                            if (!workerId) return;
+                            void handleAssign(shift, workerId);
+                          }}
+                          items={[
+                            { value: '', label: 'בחירת כונן…' },
+                            ...workersSorted.map((w) => {
+                              const unavailable = hasUnavailableConstraint(
+                                w.user_id ?? null,
+                                shift.date,
+                                shift.type
+                              );
+                              return {
+                                value: w.id,
+                                label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}${unavailable ? ' (לא זמין)' : ''}`,
+                              };
+                            }),
+                          ]}
+                        />
+                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          אם כונן מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן
+                          אזהרה, אך לא תהיה חסימה של השיבוץ.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          )}
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
+        </section>
       )}
     </div>
   );
 }
-

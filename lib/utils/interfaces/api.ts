@@ -1,4 +1,4 @@
-import type { ConstraintStatus, ShiftType } from "../enums";
+import type { ConstraintStatus, ShiftType } from '../enums';
 
 /** Request body for POST /api/auth/signup */
 export interface SignupBody {
