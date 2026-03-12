@@ -160,7 +160,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0 md:overflow-visible">
           {boards.length > 0 && (
-            <div className="flex flex-col items-center space-y-1">
+            <div className="flex flex-col items-center space-y-1 w-40">
               <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 לוח שיבוצים
               </label>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
             </div>
           )}
           {isManager && overview?.workers && overview.workers.length > 0 && (
-          <div className="flex flex-col items-center space-y-1">
+          <div className="flex flex-col items-center space-y-1 w-40">
             <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
               צפייה בסיכום שיבוצים של
             </label>

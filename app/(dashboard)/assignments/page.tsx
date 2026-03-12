@@ -575,18 +575,20 @@ export default function AssignmentsPage() {
             רענן
           </button>
           <div className="flex items-center gap-2">
-            <Dropdown
-              placeholder="כל הלוחות"
-              value={selectedBoardId ?? ""}
-              onSelect={(id) => setSelectedBoardId(id || null)}
-              items={[
-                { value: "", label: "כל הלוחות" },
-                ...(overview?.boards?.map((b) => ({
-                  value: b.id,
-                  label: `${b.name}${b.single_person_for_day ? " (אדם יחיד)" : ` (${b.workers_per_shift} במשמרת)`}`,
-                })) ?? []),
-              ]}
-            />
+            <div className="w-40">
+              <Dropdown
+                placeholder="כל הלוחות"
+                value={selectedBoardId ?? ""}
+                onSelect={(id) => setSelectedBoardId(id || null)}
+                items={[
+                  { value: "", label: "כל הלוחות" },
+                  ...(overview?.boards?.map((b) => ({
+                    value: b.id,
+                    label: `${b.name}${b.single_person_for_day ? " (אדם יחיד)" : ` (${b.workers_per_shift} במשמרת)`}`,
+                  })) ?? []),
+                ]}
+              />
+            </div>
             <button
               type="button"
               onClick={() => setShowCreateBoard(true)}
@@ -687,7 +689,6 @@ export default function AssignmentsPage() {
                   { value: "day", label: "משמרת יום" },
                   { value: "night", label: "משמרת לילה" },
                 ]}
-                buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
               />
             </div>
           )}
@@ -706,7 +707,6 @@ export default function AssignmentsPage() {
                   label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}`,
                 })),
               ]}
-              buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
             />
           </div>
         </div>
@@ -900,26 +900,27 @@ export default function AssignmentsPage() {
                       ? "יום"
                       : "לילה"}
                 </p>
-                <Dropdown
-                  placeholder="בחירת כונן…"
-                  value=""
-                  onSelect={(workerId) => {
-                    if (!workerId) return;
-                    void ensureShiftAndAssign(
-                      assigningCell.date,
-                      assigningCell.type,
-                      workerId,
-                    );
-                  }}
-                  items={[
-                    { value: "", label: "בחירת כונן…" },
-                    ...workersSorted.map((w) => ({
-                      value: w.id,
-                      label: workerDisplayName(w),
-                    })),
-                  ]}
-                  buttonClassName="cursor-pointer mb-3 w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-                />
+                <div className="mb-3">
+                  <Dropdown
+                    placeholder="בחירת כונן…"
+                    value=""
+                    onSelect={(workerId) => {
+                      if (!workerId) return;
+                      void ensureShiftAndAssign(
+                        assigningCell.date,
+                        assigningCell.type,
+                        workerId,
+                      );
+                    }}
+                    items={[
+                      { value: "", label: "בחירת כונן…" },
+                      ...workersSorted.map((w) => ({
+                        value: w.id,
+                        label: workerDisplayName(w),
+                      })),
+                    ]}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => setAssigningCell(null)}
@@ -1055,7 +1056,6 @@ export default function AssignmentsPage() {
                             };
                           }),
                         ]}
-                        buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
                       />
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                         אם כונן מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן

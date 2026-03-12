@@ -159,7 +159,6 @@ export default function SignupPage() {
                     value: s.id,
                     label: s.name,
                   }))}
-                  buttonClassName="min-h-[44px] cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-1.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
                 />
               </div>
 

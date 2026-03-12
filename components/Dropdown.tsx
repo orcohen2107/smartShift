@@ -58,7 +58,7 @@ export default function Dropdown({
         : placeholder;
 
   const defaultButtonClass =
-    "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-sm text-zinc-900 shadow-sm transition hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:bg-zinc-800";
+    "inline-flex w-full min-h-[44px] items-center justify-between gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:bg-zinc-800";
 
   const handleSelect = (item: DropdownItem) => {
     if (item.disabled) return;
@@ -67,7 +67,7 @@ export default function Dropdown({
   };
 
   return (
-    <Menu as="div" className={`relative inline-block w-40 ${className ?? ""}`}>
+    <Menu as="div" className={`relative block w-full ${className ?? ""}`}>
       <MenuButton
         disabled={disabled}
         className={buttonClassName ?? defaultButtonClass}
