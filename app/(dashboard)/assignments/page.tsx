@@ -13,6 +13,7 @@ import type {
 } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 import Checkbox from "@/components/Checkbox";
+import Dropdown from "@/components/Dropdown";
 
 type CreateShiftInput = {
   date: string;
@@ -563,7 +564,7 @@ export default function AssignmentsPage() {
             ניהול משמרות ושיבוץ כוננים (שינויים — מנהל בלבד).
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 overflow-x-auto md:overflow-visible">
           <button
             type="button"
             onClick={() => void load()}
@@ -574,21 +575,18 @@ export default function AssignmentsPage() {
             רענן
           </button>
           <div className="flex items-center gap-2">
-            <select
+            <Dropdown
+              placeholder="כל הלוחות"
               value={selectedBoardId ?? ""}
-              onChange={(e) =>
-                setSelectedBoardId(e.target.value || null)
-              }
-              className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-            >
-              <option value="">כל הלוחות</option>
-              {overview?.boards?.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.single_person_for_day ? " (אדם יחיד)" : ` (${b.workers_per_shift} במשמרת)`}
-                </option>
-              ))}
-            </select>
+              onSelect={(id) => setSelectedBoardId(id || null)}
+              items={[
+                { value: "", label: "כל הלוחות" },
+                ...(overview?.boards?.map((b) => ({
+                  value: b.id,
+                  label: `${b.name}${b.single_person_for_day ? " (אדם יחיד)" : ` (${b.workers_per_shift} במשמרת)`}`,
+                })) ?? []),
+              ]}
+            />
             <button
               type="button"
               onClick={() => setShowCreateBoard(true)}
@@ -677,38 +675,39 @@ export default function AssignmentsPage() {
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 סוג משמרת
               </label>
-              <select
+              <Dropdown
                 value={createShiftForm.type}
-                onChange={(e) =>
+                onSelect={(v) =>
                   setCreateShiftForm((prev) => ({
                     ...prev,
-                    type: e.target.value as ShiftType,
+                    type: v as ShiftType,
                   }))
                 }
-                className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-              >
-                <option value="day">משמרת יום</option>
-                <option value="night">משמרת לילה</option>
-              </select>
+                items={[
+                  { value: "day", label: "משמרת יום" },
+                  { value: "night", label: "משמרת לילה" },
+                ]}
+                buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+              />
             </div>
           )}
           <div className="space-y-1">
             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
               שיבוץ ראשוני (אופציונלי)
             </label>
-            <select
+            <Dropdown
+              placeholder="ללא שיבוץ התחלתי"
               value={initialWorkerId}
-              onChange={(e) => setInitialWorkerId(e.target.value)}
-              className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-            >
-              <option value="">ללא שיבוץ התחלתי</option>
-              {workersSorted.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {workerDisplayName(w)}
-                  {!w.user_id ? " (טרם נרשם)" : ""}
-                </option>
-              ))}
-            </select>
+              onSelect={setInitialWorkerId}
+              items={[
+                { value: "", label: "ללא שיבוץ התחלתי" },
+                ...workersSorted.map((w) => ({
+                  value: w.id,
+                  label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}`,
+                })),
+              ]}
+              buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+            />
           </div>
         </div>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -901,27 +900,26 @@ export default function AssignmentsPage() {
                       ? "יום"
                       : "לילה"}
                 </p>
-                <select
-                  className="cursor-pointer mb-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-                  onChange={(e) => {
-                    const workerId = e.target.value;
+                <Dropdown
+                  placeholder="בחירת כונן…"
+                  value=""
+                  onSelect={(workerId) => {
                     if (!workerId) return;
                     void ensureShiftAndAssign(
                       assigningCell.date,
                       assigningCell.type,
                       workerId,
                     );
-                    e.target.value = "";
                   }}
-                  defaultValue=""
-                >
-                  <option value="">בחירת כונן…</option>
-                  {workersSorted.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {workerDisplayName(w)}
-                    </option>
-                  ))}
-                </select>
+                  items={[
+                    { value: "", label: "בחירת כונן…" },
+                    ...workersSorted.map((w) => ({
+                      value: w.id,
+                      label: workerDisplayName(w),
+                    })),
+                  ]}
+                  buttonClassName="cursor-pointer mb-3 w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+                />
                 <button
                   type="button"
                   onClick={() => setAssigningCell(null)}
@@ -1036,32 +1034,29 @@ export default function AssignmentsPage() {
                       <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                         שיבוץ כונן נוסף
                       </div>
-                      <select
-                        onChange={(e) => {
-                          const workerId = e.target.value;
+                      <Dropdown
+                        placeholder="בחירת כונן…"
+                        value=""
+                        onSelect={(workerId) => {
                           if (!workerId) return;
                           void handleAssign(shift, workerId);
-                          e.target.value = "";
                         }}
-                        className="cursor-pointer w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-                        defaultValue=""
-                      >
-                        <option value="">בחירת כונן…</option>
-                        {workersSorted.map((w) => {
-                          const unavailable = hasUnavailableConstraint(
-                            w.user_id ?? null,
-                            shift.date,
-                            shift.type,
-                          );
-                          return (
-                            <option key={w.id} value={w.id}>
-                              {workerDisplayName(w)}
-                              {!w.user_id ? " (טרם נרשם)" : ""}
-                              {unavailable ? " (לא זמין)" : ""}
-                            </option>
-                          );
-                        })}
-                      </select>
+                        items={[
+                          { value: "", label: "בחירת כונן…" },
+                          ...workersSorted.map((w) => {
+                            const unavailable = hasUnavailableConstraint(
+                              w.user_id ?? null,
+                              shift.date,
+                              shift.type,
+                            );
+                            return {
+                              value: w.id,
+                              label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}${unavailable ? " (לא זמין)" : ""}`,
+                            };
+                          }),
+                        ]}
+                        buttonClassName="cursor-pointer w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-1 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
+                      />
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                         אם כונן מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן
                         אזהרה, אך לא תהיה חסימה של השיבוץ.

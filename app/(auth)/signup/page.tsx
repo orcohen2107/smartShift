@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { System } from "@/lib/utils/interfaces";
 import Checkbox from "@/components/Checkbox";
+import Dropdown from "@/components/Dropdown";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -150,17 +151,16 @@ export default function SignupPage() {
                 <label className="block text-xs font-medium text-zinc-300">
                   מערכת <span className="text-red-400">*</span>
                 </label>
-                <select
+                <Dropdown
+                  placeholder="בחר מערכת…"
                   value={systemId}
-                  onChange={(e) => setSystemId(e.target.value)}
-                  className="min-h-[44px] cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-2.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
-                >
-                  {systems.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                  onSelect={setSystemId}
+                  items={systems.map((s) => ({
+                    value: s.id,
+                    label: s.name,
+                  }))}
+                  buttonClassName="min-h-[44px] cursor-pointer w-full rounded-xl border border-zinc-700/70 bg-zinc-900/60 px-3 py-1.5 text-base text-zinc-50 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:text-sm"
+                />
               </div>
 
               <div className="flex items-center gap-2">

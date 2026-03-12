@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAssignments } from "@/contexts/AssignmentsContext";
 import { useProfile } from "@/contexts/ProfileContext";
+import Dropdown from "@/components/Dropdown";
 import type { Shift, Worker } from "@/lib/utils/interfaces";
 import { Role, ShiftType } from "@/lib/utils/enums";
 
@@ -125,17 +126,6 @@ export default function DashboardPage() {
     [overview?.assignments],
   );
 
-  const handleBoardChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) =>
-      setSelectedBoardId(e.target.value || null),
-    [setSelectedBoardId],
-  );
-  const handleWorkerChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) =>
-      setSelectedWorkerId(e.target.value || null),
-    [],
-  );
-
   if (loading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
@@ -168,25 +158,24 @@ export default function DashboardPage() {
             סקירה וסטטיסטיקות לשבוע הנוכחי
           </p>
         </div>
-        <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0">
+        <div className="flex flex-row flex-nowrap items-end gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:pb-0 md:overflow-visible">
           {boards.length > 0 && (
             <div className="flex flex-col items-center space-y-1">
               <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 לוח שיבוצים
               </label>
-              <select
+              <Dropdown
+                placeholder="כל הלוחות"
                 value={selectedBoardId ?? ""}
-                onChange={handleBoardChange}
-                className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-              >
-                <option value="">כל הלוחות</option>
-                {boards.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                    {b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : " (אדם יחיד)"}
-                  </option>
-                ))}
-              </select>
+                onSelect={(id) => setSelectedBoardId(id || null)}
+                items={[
+                  { value: "", label: "כל הלוחות" },
+                  ...boards.map((b) => ({
+                    value: b.id,
+                    label: `${b.name}${b.workers_per_shift > 1 ? ` (${b.workers_per_shift} במשמרת)` : " (אדם יחיד)"}`,
+                  })),
+                ]}
+              />
             </div>
           )}
           {isManager && overview?.workers && overview.workers.length > 0 && (
@@ -194,21 +183,20 @@ export default function DashboardPage() {
             <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
               צפייה בסיכום שיבוצים של
             </label>
-            <select
+            <Dropdown
+              placeholder="אני (המשתמש המחובר)"
               value={selectedWorkerId ?? ""}
-              onChange={handleWorkerChange}
-              className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-            >
-              <option value="">אני (המשתמש המחובר)</option>
-              {workersSorted
-                .filter((w) => w.user_id !== profile?.id && w.id !== profile?.id)
-                .map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {workerDisplayName(w)}
-                    {!w.user_id ? " (טרם נרשם)" : ""}
-                  </option>
-                ))}
-            </select>
+              onSelect={(id) => setSelectedWorkerId(id || null)}
+              items={[
+                { value: "", label: "אני (המשתמש המחובר)" },
+                ...workersSorted
+                  .filter((w) => w.user_id !== profile?.id && w.id !== profile?.id)
+                  .map((w) => ({
+                    value: w.id,
+                    label: `${workerDisplayName(w)}${!w.user_id ? " (טרם נרשם)" : ""}`,
+                  })),
+              ]}
+            />
           </div>
           )}
         </div>

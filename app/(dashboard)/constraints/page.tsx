@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api/apiFetch";
 import { useConstraints } from "@/contexts/ConstraintsContext";
 import { useProfile } from "@/contexts/ProfileContext";
 import Checkbox from "@/components/Checkbox";
+import Dropdown from "@/components/Dropdown";
 import type { Constraint } from "@/lib/utils/interfaces";
 import { ConstraintStatus, Role, ShiftType } from "@/lib/utils/enums";
 
@@ -224,7 +225,7 @@ export default function ConstraintsPage() {
   }, [handleDelete]);
 
   const inputClass =
-    "cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark] [color-scheme:light]";
+    "cursor-pointer w-full min-h-[38px] min-w-0 rounded-xl border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark] [color-scheme:light]";
   const dateInputClass =
     "cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 pe-9 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]";
   const dateInputClassCompact =
@@ -328,19 +329,14 @@ export default function ConstraintsPage() {
             <>
               <div className="space-y-1">
                 <label className={labelClass}>יום בשבוע</label>
-                <select
-                  value={recurringDayOfWeek}
-                  onChange={(e) =>
-                    setRecurringDayOfWeek(Number(e.target.value))
-                  }
-                  className={inputClass}
-                >
-                  {DAY_NAMES_HE.map((name, i) => (
-                    <option key={i} value={i}>
-                      כל {name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  value={String(recurringDayOfWeek)}
+                  onSelect={(v) => setRecurringDayOfWeek(Number(v))}
+                  items={DAY_NAMES_HE.map((name, i) => ({
+                    value: String(i),
+                    label: `כל ${name}`,
+                  }))}
+                />
               </div>
               <div className="space-y-1">
                 <label className={labelClass}>תאריך סיום (אופציונלי)</label>
@@ -360,35 +356,35 @@ export default function ConstraintsPage() {
           )}
           <div className="space-y-1">
             <label className={labelClass}>סוג משמרת</label>
-            <select
+            <Dropdown
               value={form.type}
-              onChange={(e) =>
+              onSelect={(v) =>
                 setForm((prev) => ({
                   ...prev,
-                  type: e.target.value as ShiftType,
+                  type: v as ShiftType,
                 }))
               }
-              className={inputClass}
-            >
-              <option value="day">משמרת יום</option>
-              <option value="night">משמרת לילה</option>
-            </select>
+              items={[
+                { value: ShiftType.Day, label: "משמרת יום" },
+                { value: ShiftType.Night, label: "משמרת לילה" },
+              ]}
+            />
           </div>
           <div className="space-y-1">
             <label className={labelClass}>סטטוס</label>
-            <select
+            <Dropdown
               value={form.status}
-              onChange={(e) =>
+              onSelect={(v) =>
                 setForm((prev) => ({
                   ...prev,
-                  status: e.target.value as ConstraintStatus,
+                  status: v as ConstraintStatus,
                 }))
               }
-              className={inputClass}
-            >
-              <option value={ConstraintStatus.Unavailable}>לא זמין</option>
-              <option value={ConstraintStatus.Partial}>פנוי לכמה שעות</option>
-            </select>
+              items={[
+                { value: ConstraintStatus.Unavailable, label: "לא זמין" },
+                { value: ConstraintStatus.Partial, label: "פנוי לכמה שעות" },
+              ]}
+            />
           </div>
           <div className="space-y-1 sm:col-span-2 md:col-span-1">
             <label className={labelClass}>הערה (אופציונלי)</label>
@@ -428,18 +424,18 @@ export default function ConstraintsPage() {
             {filterOptions.length > 0 && (
               <div className="space-y-1 col-span-2 md:col-span-1">
                 <label className={labelClass}>פילטר לפי שם</label>
-                <select
+                <Dropdown
+                  placeholder="הכל"
                   value={filterWorkerId}
-                  onChange={(e) => setFilterWorkerId(e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="">הכל</option>
-                  {filterOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
+                  onSelect={setFilterWorkerId}
+                  items={[
+                    { value: "", label: "הכל" },
+                    ...filterOptions.map((o) => ({
+                      value: o.id,
+                      label: o.name,
+                    })),
+                  ]}
+                />
               </div>
             )}
             <div className="space-y-1 min-w-0">
