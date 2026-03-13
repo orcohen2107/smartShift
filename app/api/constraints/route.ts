@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/requireUser';
 import type { Constraint, ConstraintPostBody } from '@/lib/utils/interfaces';
-import { ConstraintStatus, Role, ShiftType } from '@/lib/utils/enums';
+import {
+  canManage,
+  ConstraintStatus,
+  Role,
+  ShiftType,
+} from '@/lib/utils/enums';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -12,15 +17,16 @@ export async function GET(req: Request) {
   const { supabase, profile } = res;
   const url = new URL(req.url);
   const allParam = url.searchParams.get('all');
-  const managerWantsAll = profile.role === Role.Manager && allParam === '1';
+  const managerWantsAll = canManage(profile.role) && allParam === '1';
 
   // באילוצים worker_id = profile id (מזהה המשתמש שיצר את האילוץ)
   const systemId = profile.system_id;
   const systemProfileIdsResult = systemId
     ? await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, role')
         .eq('system_id', systemId)
+        .neq('role', 'guest')
     : null;
   const systemProfileIds: string[] =
     systemProfileIdsResult?.data?.map((p) => p.id) ?? [];
@@ -31,7 +37,7 @@ export async function GET(req: Request) {
     .order('date', { ascending: true })
     .order('type', { ascending: true });
 
-  if (!managerWantsAll && profile.role !== Role.Manager) {
+  if (!managerWantsAll && !canManage(profile.role)) {
     query = query.eq('worker_id', profile.id);
   } else if (systemProfileIds.length > 0) {
     query = query.in('worker_id', systemProfileIds);
@@ -87,6 +93,12 @@ export async function POST(req: Request) {
   }
 
   const { supabase, profile } = res;
+  if (profile.role === Role.Guest) {
+    return NextResponse.json(
+      { error: 'Guests cannot create constraints' },
+      { status: 403 }
+    );
+  }
   const body = (await req.json()) as ConstraintPostBody;
 
   const status: ConstraintStatus =

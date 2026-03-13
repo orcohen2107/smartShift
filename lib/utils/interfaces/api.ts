@@ -1,13 +1,18 @@
 import type { ConstraintStatus, ShiftType } from '../enums';
 
+/** סוג משתמש בהרשמה – מפקד לא ניתן לבחירה בהרשמה */
+export type SignupUserType = 'worker' | 'worker_reserves' | 'guest';
+
 /** Request body for POST /api/auth/signup */
 export interface SignupBody {
   email: string;
   password: string;
   full_name?: string;
   system_id?: string;
-  /** מילואים – ברירת מחדל false */
+  /** מילואים – ברירת מחדל false (למשתמש worker) */
   is_reserves?: boolean;
+  /** סוג משתמש: worker | worker_reserves | guest */
+  user_type?: SignupUserType;
 }
 
 /** Request body for POST /api/systems */

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/requireUser';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import type { Constraint, ConstraintPatchBody } from '@/lib/utils/interfaces';
+import { Role } from '@/lib/utils/enums';
 
 export async function PATCH(
   req: Request,
@@ -13,6 +14,12 @@ export async function PATCH(
   }
 
   const { supabase, profile } = res;
+  if (profile.role === Role.Guest) {
+    return NextResponse.json(
+      { error: 'Guests cannot edit constraints' },
+      { status: 403 }
+    );
+  }
   const { id } = await params;
 
   const { data: existing, error: fetchError } = await supabase
@@ -65,6 +72,12 @@ export async function DELETE(
   }
 
   const { supabase, profile } = res;
+  if (profile.role === Role.Guest) {
+    return NextResponse.json(
+      { error: 'Guests cannot delete constraints' },
+      { status: 403 }
+    );
+  }
   const { id } = await params;
   const url = new URL(req.url);
   const deleteSeries = url.searchParams.get('series') === '1';

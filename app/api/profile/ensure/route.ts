@@ -26,7 +26,11 @@ export async function POST(req: Request) {
   const fullName =
     (userData.user.user_metadata?.full_name as string)?.trim() || email;
   const systemId = (userData.user.user_metadata?.system_id as string) || null;
-  const isReserves = userData.user.user_metadata?.is_reserves === true;
+  const userType =
+    (userData.user.user_metadata?.user_type as string) || 'worker';
+  const isReserves =
+    userType === 'worker_reserves' ||
+    userData.user.user_metadata?.is_reserves === true;
 
   // Check if profile already exists.
   const { data: existingProfile, error: profileError } = await supabase
@@ -44,32 +48,36 @@ export async function POST(req: Request) {
       system_id?: string | null;
       is_reserves?: boolean;
     };
-    const { data: existingWorker } = await admin
-      .from('workers')
-      .select('id')
-      .eq('id', profile.id)
-      .maybeSingle();
-    if (!existingWorker) {
-      // Insert עם client של המשתמש – RLS policy "Workers: user can insert own row" מאפשר
-      const { error: workerInsertErr } = await supabase.from('workers').insert({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: profile.email,
-        user_id: profile.id,
-        system_id: profile.system_id ?? null,
-        is_reserves: profile.is_reserves ?? false,
-      });
-      if (workerInsertErr) {
-        return NextResponse.json(
-          { error: `Worker creation failed: ${workerInsertErr.message}` },
-          { status: 500 }
-        );
+    // רק worker מקבל שורת worker – commander/guest/manager לא
+    if (profile.role === 'worker') {
+      const { data: existingWorker } = await admin
+        .from('workers')
+        .select('id')
+        .eq('id', profile.id)
+        .maybeSingle();
+      if (!existingWorker) {
+        const { error: workerInsertErr } = await supabase
+          .from('workers')
+          .insert({
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            user_id: profile.id,
+            system_id: profile.system_id ?? null,
+            is_reserves: profile.is_reserves ?? false,
+          });
+        if (workerInsertErr) {
+          return NextResponse.json(
+            { error: `Worker creation failed: ${workerInsertErr.message}` },
+            { status: 500 }
+          );
+        }
       }
     }
     return NextResponse.json({ profile });
   }
 
-  // Determine role for the first profile = manager, others = worker.
+  // Determine role: first profile = manager, others from user_type (worker/guest).
   const { count, error: countError } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true });
@@ -78,7 +86,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: countError.message }, { status: 500 });
   }
 
-  const role = !count || count === 0 ? 'manager' : 'worker';
+  const role =
+    !count || count === 0
+      ? 'manager'
+      : userType === 'guest'
+        ? 'guest'
+        : 'worker';
 
   // מערכת: מ-metadata או ברירת מחדל (ראשית)
   let finalSystemId = systemId;
@@ -126,38 +139,39 @@ export async function POST(req: Request) {
   }
   const { data: unlinkedWorkers } = await toLinkQuery;
 
-  const toLink = unlinkedWorkers?.[0];
-  if (toLink?.id) {
-    // עדכון עם client של המשתמש – RLS "claim self when user_id is null" מאפשר
-    const { error: updateErr } = await supabase
-      .from('workers')
-      .update({
+  // רק role=worker מקבל שורת worker – commander/guest/manager לא
+  if (role === 'worker') {
+    const toLink = unlinkedWorkers?.[0];
+    if (toLink?.id) {
+      const { error: updateErr } = await supabase
+        .from('workers')
+        .update({
+          user_id: userId,
+          email: email || null,
+          is_reserves: isReserves,
+        })
+        .eq('id', toLink.id);
+      if (updateErr) {
+        return NextResponse.json(
+          { error: `Worker link failed: ${updateErr.message}` },
+          { status: 500 }
+        );
+      }
+    } else {
+      const { error: workerInsertErr } = await supabase.from('workers').insert({
+        id: userId,
+        full_name: fullName,
+        email: email ?? null,
         user_id: userId,
-        email: email || null,
+        system_id: profileSystemId,
         is_reserves: isReserves,
-      })
-      .eq('id', toLink.id);
-    if (updateErr) {
-      return NextResponse.json(
-        { error: `Worker link failed: ${updateErr.message}` },
-        { status: 500 }
-      );
-    }
-  } else {
-    // פרופיל חדש – הוספת worker עם client של המשתמש (RLS "user can insert own row")
-    const { error: workerInsertErr } = await supabase.from('workers').insert({
-      id: userId,
-      full_name: fullName,
-      email: email ?? null,
-      user_id: userId,
-      system_id: profileSystemId,
-      is_reserves: isReserves,
-    });
-    if (workerInsertErr) {
-      return NextResponse.json(
-        { error: `Worker creation failed: ${workerInsertErr.message}` },
-        { status: 500 }
-      );
+      });
+      if (workerInsertErr) {
+        return NextResponse.json(
+          { error: `Worker creation failed: ${workerInsertErr.message}` },
+          { status: 500 }
+        );
+      }
     }
   }
 

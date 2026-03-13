@@ -59,7 +59,7 @@ export default function Dropdown({
         : placeholder;
 
   const defaultButtonClass =
-    'inline-flex w-full min-h-[44px] items-center justify-between gap-2 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:bg-zinc-800';
+    'inline-flex w-full min-h-[44px] items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
 
   const handleSelect = (item: DropdownItem) => {
     if (item.disabled) return;
@@ -81,14 +81,16 @@ export default function Dropdown({
       </MenuButton>
 
       <MenuItems
-        className={`absolute z-30 mt-1 w-full origin-top rounded-lg border border-zinc-200 bg-white py-1 text-sm shadow-lg outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 ${panelClassName ?? ''}`}
+        portal
+        anchor="bottom start"
+        className={`z-50 min-w-[var(--button-width)] rounded-xl border border-zinc-200 bg-white py-1 text-sm shadow-xl outline-none [--anchor-gap:6px] [--anchor-padding:4px] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 ${panelClassName ?? ''}`}
         style={{ maxHeight: '16rem', overflowY: 'auto' }}
       >
         <div className="py-1">
           {items.map((item) => {
             const isSelected = value === item.value;
             const itemClass =
-              'flex w-full min-w-0 items-center rounded-lg px-3 py-1.5 text-left text-sm whitespace-nowrap overflow-hidden text-ellipsis data-[focus]:outline-none data-[focus]:ring-2 data-[focus]:ring-emerald-400/40 ' +
+              'flex w-full min-w-0 items-center rounded-lg px-3 py-1.5 text-start text-sm whitespace-nowrap overflow-hidden text-ellipsis data-[focus]:outline-none data-[focus]:ring-2 data-[focus]:ring-emerald-400/40 ' +
               (item.disabled
                 ? 'cursor-not-allowed opacity-50'
                 : 'cursor-pointer text-zinc-700 data-[focus]:bg-zinc-100 dark:text-zinc-300 dark:data-[focus]:bg-zinc-800') +

@@ -1,16 +1,28 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import {
+  ChartBarIcon,
+  CalendarDaysIcon,
+  ClipboardDocumentListIcon,
+  Cog6ToothIcon,
+  SunIcon,
+  MoonIcon,
+  Bars3Icon,
+  XMarkIcon,
+  ArrowRightOnRectangleIcon,
+} from '@heroicons/react/20/solid';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { useTheme } from '@/components/ThemeProvider';
 import { useProfile } from '@/contexts/ProfileContext';
-import { Role } from '@/lib/utils/enums';
+import { canManage } from '@/lib/utils/enums';
 
 const baseLinks = [
-  { href: '/dashboard', label: 'דשבורד' },
-  { href: '/constraints', label: 'אילוצים' },
+  { href: '/dashboard', label: 'דאשבורד', icon: ChartBarIcon },
+  { href: '/constraints', label: 'אילוצים', icon: CalendarDaysIcon },
 ];
 
 export function Navbar() {
@@ -29,135 +41,158 @@ export function Navbar() {
     router.replace('/login');
   }, [router]);
 
-  const managerLinks = useMemo(
-    () =>
-      profile?.role === Role.Manager
-        ? [
-            { href: '/assignments', label: 'שיבוצים' },
-            { href: '/settings', label: 'הגדרות' },
-          ]
-        : [],
-    [profile?.role]
-  );
-
-  const allLinks = useMemo(
-    () => [...baseLinks, ...managerLinks],
-    [managerLinks]
-  );
+  const allLinks = useMemo(() => {
+    if (!profile) return baseLinks;
+    if (profile.role === 'guest')
+      return [{ href: '/dashboard', label: 'דאשבורד', icon: ChartBarIcon }];
+    if (canManage(profile.role)) {
+      return [
+        ...baseLinks,
+        {
+          href: '/assignments',
+          label: 'שיבוצים',
+          icon: ClipboardDocumentListIcon,
+        },
+        { href: '/settings', label: 'הגדרות', icon: Cog6ToothIcon },
+      ];
+    }
+    return baseLinks;
+  }, [profile]);
 
   const linkClass = useCallback(
     (href: string) => {
       const active = pathname === href;
-      return `block rounded-md px-3 py-2.5 text-sm transition min-h-[44px] flex items-center ${
+      return `flex min-h-[40px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
         active
-          ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950'
-          : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+          ? 'bg-emerald-500/15 text-emerald-700 shadow-none dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-500/30 dark:ring-emerald-500/25'
+          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-50'
       }`;
     },
     [pathname]
   );
 
+  const NavLink = ({ link }: { link: (typeof allLinks)[0] }) => {
+    const Icon = link.icon;
+    return (
+      <Link href={link.href} className={linkClass(link.href)}>
+        {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden />}
+        <span>{link.label}</span>
+      </Link>
+    );
+  };
+
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2 sm:px-4 sm:py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-          <span className="shrink-0 text-sm font-semibold tracking-wide text-zinc-700 dark:text-zinc-300">
+    <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-6">
+          <span className="shrink-0 text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             SmartShift
           </span>
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex">
             {allLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={linkClass(link.href)}
-              >
-                {link.label}
-              </Link>
+              <NavLink key={link.href} link={link} />
             ))}
           </nav>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {profile?.full_name && (
-            <span className="hidden max-w-[120px] truncate text-xs text-zinc-600 sm:inline dark:text-zinc-400">
+            <span className="hidden max-w-[140px] truncate text-sm font-medium text-zinc-600 sm:inline dark:text-zinc-400">
               שלום, {profile.full_name}
             </span>
           )}
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/80 text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700/80 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
             title={theme === 'dark' ? 'מעבר למצב בהיר' : 'מעבר למצב כהה'}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? (
+              <SunIcon className="h-4 w-4" aria-hidden />
+            ) : (
+              <MoonIcon className="h-4 w-4" aria-hidden />
+            )}
           </button>
           <button
             type="button"
             onClick={handleLogout}
-            className="hidden min-h-[36px] rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 sm:block dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="hidden min-h-[36px] items-center gap-2 rounded-xl border border-zinc-200/80 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 sm:flex dark:border-zinc-700/80 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
           >
+            <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden />
             יציאה
           </button>
 
-          {/* Mobile menu button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((o) => !o)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 md:hidden"
+            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-zinc-200/80 md:hidden dark:border-zinc-700/80"
             aria-label={mobileMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? (
-              <span className="text-lg">✕</span>
+              <XMarkIcon className="h-5 w-5" aria-hidden />
             ) : (
-              <span className="text-lg">☰</span>
+              <Bars3Icon className="h-5 w-5" aria-hidden />
             )}
           </button>
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-          aria-hidden
-        />
-      )}
-      <div
-        className={`fixed top-0 right-0 z-50 max-h-[100dvh] w-[min(280px,85vw)] overflow-y-auto border-r border-zinc-200 bg-white shadow-xl transition-transform duration-200 md:hidden dark:border-zinc-800 dark:bg-zinc-950 ${
-          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{ insetBlock: 0 }}
-      >
-        <div className="flex flex-col gap-1 p-4 pt-14">
-          {profile?.full_name && (
-            <p className="mb-2 px-3 text-xs text-zinc-500 dark:text-zinc-400">
-              שלום, {profile.full_name}
-            </p>
-          )}
-          {allLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className={linkClass(link.href)}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <>
+            {mobileMenuOpen && (
+              <div
+                className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-sm md:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-hidden
+              />
+            )}
+            <div
+              className={`fixed inset-y-0 start-0 z-[101] max-h-[100dvh] w-[min(280px,85vw)] overflow-y-auto border-s border-zinc-200 bg-white shadow-xl transition-transform duration-200 md:hidden dark:border-zinc-800 dark:bg-zinc-950 ${
+                mobileMenuOpen
+                  ? 'translate-x-0'
+                  : '-translate-x-full rtl:translate-x-full'
+              }`}
             >
-              {link.label}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={() => {
-              setMobileMenuOpen(false);
-              void handleLogout();
-            }}
-            className="mt-2 min-h-[44px] w-full rounded-md border border-zinc-300 px-3 py-2.5 text-right text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            יציאה
-          </button>
-        </div>
-      </div>
+              <div className="flex flex-col gap-1 p-4 pt-14">
+                {profile?.full_name && (
+                  <p className="mb-2 px-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    שלום, {profile.full_name}
+                  </p>
+                )}
+                {allLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={linkClass(link.href)}
+                    >
+                      {Icon && (
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                      )}
+                      <span>{link.label}</span>
+                    </Link>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void handleLogout();
+                  }}
+                  className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden />
+                  יציאה
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
     </header>
   );
 }
