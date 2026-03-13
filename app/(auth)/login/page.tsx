@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { apiFetch } from '@/lib/api/apiFetch';
 
@@ -60,7 +61,6 @@ function LoginForm() {
 
       router.replace('/dashboard');
     } catch (err: any) {
-      // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error(err);
       setError(err.message ?? 'Login failed');
     } finally {
@@ -70,7 +70,13 @@ function LoginForm() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-[100dvh] min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+      <div className="flex min-h-[100dvh] min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+        <Logo
+          width={200}
+          height={64}
+          className="h-14 w-auto object-contain"
+          forceDark
+        />
         <p className="text-sm text-zinc-400">טוען...</p>
       </div>
     );
@@ -84,6 +90,12 @@ function LoginForm() {
           {/* טור טופס התחברות */}
           <div className="w-full p-4 sm:p-6 md:w-1/2 md:p-10 lg:p-12">
             <div className="mb-8">
+              <Logo
+                width={220}
+                height={70}
+                className="mb-6 h-16 w-auto object-contain sm:h-[4.5rem]"
+                forceDark
+              />
               <h1 className="mb-2 text-2xl font-semibold text-zinc-50 lg:text-3xl">
                 ברוך הבא ל‑SmartShift
               </h1>
@@ -157,6 +169,12 @@ function LoginForm() {
           {/* טור צד ויזואלי / טקסטואלי */}
           <div className="hidden w-1/2 flex-col justify-between border-l border-zinc-800/70 bg-gradient-to-br from-zinc-900/80 via-zinc-900/40 to-black/60 p-8 md:flex lg:p-10">
             <div>
+              <Logo
+                width={180}
+                height={56}
+                className="mb-6 h-12 w-auto object-contain"
+                forceDark
+              />
               <p className="text-xs font-semibold tracking-[0.2em] text-emerald-300/80 uppercase">
                 מערכת משמרות חכמה
               </p>
@@ -200,7 +218,13 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+        <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black">
+          <Logo
+            width={200}
+            height={64}
+            className="h-14 w-auto object-contain"
+            forceDark
+          />
           <p className="text-sm text-zinc-400">טוען...</p>
         </div>
       }

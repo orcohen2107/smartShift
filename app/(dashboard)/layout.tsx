@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { Navbar } from '@/components/Navbar';
 import { AssignmentsProvider } from '@/contexts/AssignmentsContext';
@@ -47,7 +48,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-zinc-950">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-100 dark:bg-zinc-950">
+        <Logo width={200} height={64} className="h-14 w-auto object-contain" />
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">

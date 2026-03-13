@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 import type { SignupUserType, System } from '@/lib/utils/interfaces';
 import Dropdown from '@/components/Dropdown';
 
@@ -86,6 +87,12 @@ export default function SignupPage() {
           {/* טור טופס הרשמה */}
           <div className="w-full p-5 sm:p-6 md:w-1/2 md:p-10 lg:p-12">
             <div className="mb-8">
+              <Logo
+                width={220}
+                height={70}
+                className="mb-6 h-16 w-auto object-contain sm:h-[4.5rem]"
+                forceDark
+              />
               <h1 className="mb-2 text-2xl font-semibold text-zinc-50 lg:text-3xl">
                 יצירת משתמש חדש
               </h1>
@@ -215,6 +222,12 @@ export default function SignupPage() {
           {/* טור צד ויזואלי / טקסטואלי */}
           <div className="hidden w-1/2 flex-col justify-between border-l border-zinc-800/70 bg-gradient-to-br from-zinc-900/80 via-zinc-900/40 to-black/60 p-8 md:flex lg:p-10">
             <div>
+              <Logo
+                width={180}
+                height={56}
+                className="mb-6 h-12 w-auto object-contain"
+                forceDark
+              />
               <p className="text-xs font-semibold tracking-[0.2em] text-emerald-300/80 uppercase">
                 התחלה מהירה לצוותים
               </p>
