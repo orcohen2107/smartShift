@@ -144,6 +144,46 @@ export default function AssignmentsPage() {
       ? `${w.full_name ?? w.email ?? w.id ?? '—'}${w.is_reserves ? ' (מילואים)' : ''}`
       : '—';
 
+  const AVATAR_COLORS = [
+    'bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300',
+    'bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-300',
+    'bg-amber-500/20 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300',
+    'bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-300',
+    'bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-300',
+  ];
+
+  const WORKER_AVATAR_OVERRIDES: Record<string, string> = {
+    'אור כהן':
+      'bg-red-500/20 text-red-700 dark:bg-red-500/25 dark:text-red-300',
+  };
+
+  function getWorkerInitials(w: Worker | undefined): string {
+    if (!w) return '—';
+    const name = (w.full_name ?? w.email ?? '').trim();
+    if (!name) return (w.id ?? '?').slice(0, 2).toUpperCase();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (
+        (parts[0]!.charAt(0) ?? '') + (parts[parts.length - 1]!.charAt(0) ?? '')
+      );
+    }
+    return name.slice(0, 2);
+  }
+
+  function getWorkerAvatarColor(workerId: string, worker?: Worker): string {
+    const name = worker
+      ? workerDisplayName(worker)
+          .replace(/\s*\(מילואים\)$/, '')
+          .trim()
+      : '';
+    if (name && WORKER_AVATAR_OVERRIDES[name])
+      return WORKER_AVATAR_OVERRIDES[name]!;
+    let h = 0;
+    for (let i = 0; i < workerId.length; i++)
+      h = (h << 5) - h + workerId.charCodeAt(i);
+    return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]!;
+  }
+
   const constraintsByWorkerDateType: Record<string, Constraint[]> =
     useMemo(() => {
       const map: Record<string, Constraint[]> = {};
@@ -481,7 +521,56 @@ export default function AssignmentsPage() {
     return date < today;
   }
 
+  function isToday(dateStr: string): boolean {
+    const today = new Date();
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return (
+      today.getFullYear() === y &&
+      today.getMonth() === m - 1 &&
+      today.getDate() === d
+    );
+  }
+
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  const weeklyProgress = useMemo(() => {
+    const datesSet = new Set(weekDates);
+    let shiftsInWeek = (overview?.shifts ?? []).filter((s) =>
+      datesSet.has(s.date)
+    );
+    if (selectedBoardId) {
+      shiftsInWeek = shiftsInWeek.filter((s) => s.board_id === selectedBoardId);
+    }
+    const shiftIdsInWeek = new Set(shiftsInWeek.map((s) => s.id));
+    const assignmentsInWeek = (overview?.assignments ?? []).filter((a) =>
+      shiftIdsInWeek.has(a.shift_id)
+    );
+    const isFullDay = selectedBoard?.single_person_for_day ?? false;
+    let daysFullyAssigned = 0;
+    for (const date of weekDates) {
+      const dayShifts = shiftsInWeek.filter((s) => s.date === date);
+      const relevantShifts = isFullDay
+        ? dayShifts.filter((s) => s.type === ShiftType.FullDay)
+        : dayShifts.filter(
+            (s) => s.type === ShiftType.Day || s.type === ShiftType.Night
+          );
+      if (relevantShifts.length === 0) continue;
+      const allFull = relevantShifts.every((s) => {
+        const count = assignmentsInWeek.filter(
+          (a) => a.shift_id === s.id
+        ).length;
+        return count >= (s.required_count ?? 1);
+      });
+      if (allFull) daysFullyAssigned += 1;
+    }
+    return { daysFullyAssigned, total: 7 };
+  }, [
+    weekDates,
+    selectedBoardId,
+    selectedBoard?.single_person_for_day,
+    overview?.shifts,
+    overview?.assignments,
+  ]);
 
   const handleAutofill = useCallback(async () => {
     if (!selectedBoardId || !weekDates.length) return;
@@ -917,23 +1006,47 @@ export default function AssignmentsPage() {
               </div>
             </div>
           </div>
-          <div className="-mx-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white sm:mx-0 sm:rounded-2xl dark:border-zinc-800 dark:bg-zinc-900/80">
+          <div className="rounded-xl border border-zinc-200/80 bg-white/50 px-3 py-2 dark:border-zinc-700/80 dark:bg-zinc-900/30">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                שיבוץ השבוע
+              </span>
+              <div className="flex flex-1 items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all duration-300 dark:bg-emerald-400"
+                    style={{
+                      width: `${weeklyProgress.total > 0 ? (weeklyProgress.daysFullyAssigned / weeklyProgress.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+                <span className="min-w-[80px] text-left text-xs font-medium text-zinc-600 tabular-nums dark:text-zinc-400">
+                  {weeklyProgress.daysFullyAssigned} / {weeklyProgress.total}{' '}
+                  ימים שובצו
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            className="-mx-3 overflow-x-auto overflow-y-auto rounded-xl border border-zinc-200 bg-white sm:mx-0 sm:rounded-2xl dark:border-zinc-800 dark:bg-zinc-900/80"
+            style={{ maxHeight: 'calc(100dvh - 14rem)' }}
+          >
             <table className="w-full min-w-[480px] text-sm sm:min-w-[600px]">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-700">
-                  <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                <tr className="sticky top-0 z-20 border-b border-zinc-200 bg-white/95 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95 dark:shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
+                  <th className="sticky right-0 z-[21] min-w-[140px] border-s border-zinc-200/80 bg-white/95 p-2.5 text-right text-xs font-semibold tracking-wide text-zinc-600 uppercase backdrop-blur-sm dark:border-zinc-700/80 dark:bg-zinc-900/95 dark:text-zinc-400">
                     תאריך
                   </th>
                   {selectedBoard?.single_person_for_day ? (
-                    <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                    <th className="p-2.5 text-right text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-400">
                       כל היום
                     </th>
                   ) : (
                     <>
-                      <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                      <th className="p-2.5 text-right text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-400">
                         משמרת יום
                       </th>
-                      <th className="p-2 text-right text-zinc-600 dark:text-zinc-400">
+                      <th className="p-2.5 text-right text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-400">
                         משמרת לילה
                       </th>
                     </>
@@ -941,7 +1054,7 @@ export default function AssignmentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {weekDates.map((date) => {
+                {weekDates.map((date, rowIndex) => {
                   const isFullDay =
                     selectedBoard?.single_person_for_day ?? false;
                   const shiftDay = getShiftByDateType(date, ShiftType.Day);
@@ -969,15 +1082,41 @@ export default function AssignmentsPage() {
                     const isAssigningHere = assigningCellKey?.startsWith(
                       `${date}-${cellType}-`
                     );
+                    const required = shift?.required_count ?? 1;
+                    const current = assigns.length;
+                    const shiftStatus: 'full' | 'missing' | 'empty' =
+                      current >= required
+                        ? 'full'
+                        : current > 0
+                          ? 'missing'
+                          : 'empty';
+                    const showStatusBadge = shift || !isPast;
                     return (
                       <td className="p-2 align-top" key={String(cellType)}>
                         <div
-                          className={`min-h-[44px] rounded-lg border border-dashed p-2 dark:border-zinc-700 ${
+                          className={`min-h-[44px] rounded-lg border border-dashed p-2 transition-colors duration-200 hover:bg-white/3 dark:hover:bg-white/[0.03] ${
                             !shift && isPast
                               ? 'border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50'
                               : 'border-zinc-200 dark:border-zinc-700'
                           } ${!shift && isPast ? 'opacity-60' : ''}`}
                         >
+                          {showStatusBadge && (
+                            <span
+                              className={`mb-1.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                shiftStatus === 'full'
+                                  ? 'bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300'
+                                  : shiftStatus === 'missing'
+                                    ? 'bg-amber-500/20 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300'
+                                    : 'bg-red-500/20 text-red-700 dark:bg-red-500/25 dark:text-red-300'
+                              }`}
+                            >
+                              {shiftStatus === 'full'
+                                ? 'מלא'
+                                : shiftStatus === 'missing'
+                                  ? 'חסר כונן'
+                                  : 'ריק'}
+                            </span>
+                          )}
                           {isAssigningHere && (
                             <span className="text-xs text-emerald-600 dark:text-emerald-400">
                               משבץ…
@@ -1000,12 +1139,18 @@ export default function AssignmentsPage() {
                                 className="flex items-center justify-between gap-1 text-xs"
                               >
                                 <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                                  <span
+                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getWorkerAvatarColor(a.worker_id, w)}`}
+                                    title={workerDisplayName(w)}
+                                  >
+                                    {getWorkerInitials(w)}
+                                  </span>
                                   <span className="font-medium">
                                     {workerDisplayName(w)}
                                   </span>
                                   {workload > 0 && (
                                     <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
-                                      — {workload} משמרות השבוע
+                                      • {workload} השבוע
                                     </span>
                                   )}
                                   {hasConstraint && (
@@ -1055,16 +1200,38 @@ export default function AssignmentsPage() {
                     );
                   };
 
+                  const isOddRow = rowIndex % 2 === 1;
                   return (
                     <tr
                       key={date}
-                      className="border-b border-zinc-100 dark:border-zinc-800"
+                      className={`border-b border-zinc-100 transition-colors duration-150 dark:border-zinc-800 ${
+                        isToday(date)
+                          ? 'bg-emerald-500/5 ring-1 ring-emerald-500/20 hover:bg-emerald-500/8 dark:bg-emerald-500/10 dark:ring-emerald-500/15 dark:hover:bg-emerald-500/12'
+                          : isOddRow
+                            ? 'bg-zinc-50/50 hover:bg-white/30 dark:bg-white/[0.02] dark:hover:bg-white/[0.03]'
+                            : 'hover:bg-white/30 dark:hover:bg-white/[0.03]'
+                      }`}
                     >
-                      <td className="p-2 font-medium text-zinc-900 dark:text-zinc-100">
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          {getDayName(date)}
-                        </span>{' '}
-                        {formatDateHe(date)}
+                      <td
+                        className={`sticky right-0 z-10 min-w-[140px] border-s border-zinc-200/60 p-2.5 font-medium text-zinc-900 dark:border-zinc-700/60 dark:text-zinc-100 ${
+                          isToday(date)
+                            ? 'bg-emerald-500/5 dark:bg-emerald-500/10'
+                            : isOddRow
+                              ? 'bg-zinc-50/50 dark:bg-white/[0.02]'
+                              : 'bg-white dark:bg-zinc-900/80'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {isToday(date) && (
+                            <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              היום
+                            </span>
+                          )}
+                          <span className="text-zinc-500 dark:text-zinc-400">
+                            {getDayName(date)}
+                          </span>{' '}
+                          {formatDateHe(date)}
+                        </span>
                       </td>
                       {isFullDay ? (
                         renderCell(shiftForDay, assignDay, ShiftType.FullDay)
@@ -1195,22 +1362,28 @@ export default function AssignmentsPage() {
                               return (
                                 <li
                                   key={a.id}
-                                  className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
+                                  className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1.5 transition-colors duration-200 hover:bg-white/5 dark:bg-zinc-800/80 dark:hover:bg-white/5"
                                 >
                                   <div className="flex items-center gap-2">
+                                    <span
+                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getWorkerAvatarColor(a.worker_id, worker)}`}
+                                      title={workerDisplayName(worker)}
+                                    >
+                                      {getWorkerInitials(worker)}
+                                    </span>
                                     <span className="inline-flex flex-wrap items-center gap-1.5 font-medium text-zinc-900 dark:text-zinc-100">
                                       {workerDisplayName(worker)}
                                       {(assignmentCountByWorkerThisWeek[
                                         a.worker_id
                                       ] ?? 0) > 0 && (
                                         <span className="text-zinc-500 dark:text-zinc-400">
-                                          —
+                                          •
                                           {
                                             assignmentCountByWorkerThisWeek[
                                               a.worker_id
                                             ]
                                           }{' '}
-                                          משמרות השבוע
+                                          השבוע
                                         </span>
                                       )}
                                       {hasConstraint && (
