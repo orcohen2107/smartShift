@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Logo } from '@/components/Logo';
 import {
   ChartBarIcon,
   CalendarDaysIcon,
@@ -85,9 +86,16 @@ export function Navbar() {
     <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-6">
-          <span className="shrink-0 text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            SmartShift
-          </span>
+          <Link
+            href="/dashboard"
+            className="flex shrink-0 items-center transition-opacity hover:opacity-90"
+          >
+            <Logo
+              width={180}
+              height={56}
+              className="h-11 w-auto object-contain object-center sm:h-12"
+            />
+          </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {allLinks.map((link) => (
               <NavLink key={link.href} link={link} />

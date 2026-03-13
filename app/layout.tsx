@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'SmartShift - מערכת משמרות',
   description: 'אפליקציה לניהול ושיבוץ משמרות',
+  icons: {
+    icon: '../public/new_logo.png',
+    apple: '../public/new_logo.png',
+  },
 };
 
 export default function RootLayout({
