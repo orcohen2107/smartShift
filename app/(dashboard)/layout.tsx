@@ -47,8 +47,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-        טוען...
+      <div className="flex min-h-screen items-center justify-center bg-zinc-100 dark:bg-zinc-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            טוען...
+          </p>
+        </div>
       </div>
     );
   }
@@ -57,7 +62,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <ProfileProvider>
       <AssignmentsProvider>
         <ConstraintsProvider>
-          <div className="min-h-screen overflow-x-hidden bg-zinc-50 dark:bg-zinc-950">
+          <div className="min-h-screen overflow-x-hidden bg-zinc-100 dark:bg-zinc-950">
             <Navbar />
             <GuestRedirect>
               <main className="mx-auto max-w-5xl min-w-0 px-3 py-4 sm:px-4 sm:py-6">

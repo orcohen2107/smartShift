@@ -27,3 +27,10 @@ body {
   direction: rtl;
   text-align: right;
 }
+
+/* Smooth transitions for interactive elements */
+@layer utilities {
+  .transition-smooth {
+    transition: all 0.2s ease-in-out;
+  }
+}
