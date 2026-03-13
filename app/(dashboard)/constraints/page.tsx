@@ -638,17 +638,30 @@ export default function ConstraintsPage() {
             טוען אילוצים...
           </p>
         ) : filteredItems.length === 0 ? (
-          <p className="rounded-xl border border-zinc-200/80 bg-white/50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700/80 dark:bg-zinc-900/30 dark:text-zinc-400">
-            אין אילוצים לתאריכים שנבחרו.
-          </p>
+          <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-zinc-200/80 bg-white/50 px-6 py-12 dark:border-zinc-700/80 dark:bg-zinc-900/30">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800/80">
+              <CalendarDaysIcon
+                className="h-7 w-7 text-zinc-400 dark:text-zinc-500"
+                aria-hidden
+              />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-zinc-700 dark:text-zinc-200">
+                אין אילוצים עדיין
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                הוסף אילוץ ראשון כדי לסמן ימים בהם אינך זמין למשמרות
+              </p>
+            </div>
+          </div>
         ) : (
-          <ul className="max-h-[280px] divide-y divide-zinc-100 overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:divide-zinc-800/80 dark:border-zinc-700/80 dark:bg-zinc-900/60">
+          <ul className="flex max-h-[280px] flex-col gap-2 overflow-x-hidden overflow-y-auto rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-2 dark:border-zinc-700/80 dark:bg-zinc-900/30">
             {filteredItems.map((c) => {
               const isOwner = profile?.id === c.worker_id;
               return (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-zinc-900 transition-colors hover:bg-zinc-50/80 dark:text-zinc-100 dark:hover:bg-zinc-800/30"
+                  className="group flex items-center justify-between gap-3 rounded-lg border border-transparent bg-white px-4 py-3 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-200 hover:bg-white/95 hover:shadow-md dark:border-transparent dark:bg-zinc-900/40 dark:text-zinc-100 dark:hover:border-zinc-700 dark:hover:bg-white/5 dark:hover:shadow-md"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
@@ -670,30 +683,37 @@ export default function ConstraintsPage() {
                       )}
                     </span>
                     <div className="min-w-0 space-y-0.5">
-                      <div className="font-medium">
-                        {formatDateHe(c.date)} ·{' '}
-                        {c.type === ShiftType.Day
-                          ? 'משמרת יום'
-                          : c.type === ShiftType.Night
-                            ? 'משמרת לילה'
-                            : 'כל היום'}
+                      <div className="flex flex-wrap items-baseline gap-x-1.5">
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-200">
+                          {formatDateHe(c.date)}
+                        </span>
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          ·
+                        </span>
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                          {c.type === ShiftType.Day
+                            ? 'משמרת יום'
+                            : c.type === ShiftType.Night
+                              ? 'משמרת לילה'
+                              : 'כל היום'}
+                        </span>
                         {c.worker_name && (
-                          <span className="mr-2 text-zinc-500 dark:text-zinc-400">
+                          <span className="text-zinc-500 dark:text-zinc-400">
                             · {c.worker_name}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                          className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${
                             c.status === ConstraintStatus.Unavailable
-                              ? 'bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300'
-                              : 'bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                              ? 'bg-red-500/15 text-red-700 ring-1 ring-red-500/20 dark:bg-red-500/20 dark:text-red-300 dark:ring-red-500/30'
+                              : 'bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30'
                           }`}
                         >
                           {c.status === ConstraintStatus.Unavailable
                             ? 'לא זמין'
-                            : 'פנוי לכמה שעות'}
+                            : 'פנוי למספר שעות'}
                         </span>
                         {c.note && (
                           <span className="text-xs text-zinc-600 dark:text-zinc-400">

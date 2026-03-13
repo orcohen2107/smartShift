@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { BoltIcon } from '@heroicons/react/20/solid';
 import { apiFetch } from '@/lib/api/apiFetch';
 import { useAssignments } from '@/contexts/AssignmentsContext';
 import { useProfile } from '@/contexts/ProfileContext';
@@ -71,6 +72,8 @@ export default function AssignmentsPage() {
   } | null>(null);
   const [assigningFromConstraintModal, setAssigningFromConstraintModal] =
     useState(false);
+  const [autofillLoading, setAutofillLoading] = useState(false);
+  const [autofillSuccess, setAutofillSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile === null) return;
@@ -110,17 +113,21 @@ export default function AssignmentsPage() {
       const counts: Record<string, number> = {};
       const assignments = overview?.assignments ?? [];
       const datesInWeek = new Set(getWeekDates(weekOffset));
-      const shiftIdsInWeek = new Set(
-        (overview?.shifts ?? [])
-          .filter((s) => datesInWeek.has(s.date))
-          .map((s) => s.id)
+      let shiftsInScope = (overview?.shifts ?? []).filter((s) =>
+        datesInWeek.has(s.date)
       );
+      if (selectedBoardId) {
+        shiftsInScope = shiftsInScope.filter(
+          (s) => s.board_id === selectedBoardId
+        );
+      }
+      const shiftIdsInWeek = new Set(shiftsInScope.map((s) => s.id));
       assignments.forEach((a) => {
         if (!shiftIdsInWeek.has(a.shift_id)) return;
         counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
       });
       return counts;
-    }, [overview?.assignments, overview?.shifts, weekOffset]);
+    }, [overview?.assignments, overview?.shifts, weekOffset, selectedBoardId]);
 
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
@@ -152,7 +159,11 @@ export default function AssignmentsPage() {
     return overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [];
   }
 
-  function hasConstraintForShift(workerId: string, date: string, shiftType: ShiftType): boolean {
+  function hasConstraintForShift(
+    workerId: string,
+    date: string,
+    shiftType: ShiftType
+  ): boolean {
     const constraints = (overview?.constraints ?? []).filter(
       (c) => c.worker_id === workerId && c.date === date
     );
@@ -471,6 +482,49 @@ export default function AssignmentsPage() {
   }
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  const handleAutofill = useCallback(async () => {
+    if (!selectedBoardId || !weekDates.length) return;
+    setError(null);
+    setAutofillSuccess(null);
+    setAutofillLoading(true);
+    try {
+      const fromDate = weekDates[0]!;
+      const toDate = weekDates[6]!;
+      const res = await apiFetch<{
+        created: number;
+        assignments: {
+          id: string;
+          shift_id: string;
+          worker_id: string;
+          created_at: string;
+        }[];
+      }>('/api/assignments/autofill', {
+        method: 'POST',
+        json: {
+          board_id: selectedBoardId,
+          from_date: fromDate,
+          to_date: toDate,
+        },
+      });
+      const created = res.assignments ?? [];
+      if (created.length > 0) {
+        updateOverview((prev) => ({
+          ...prev,
+          assignments: [...prev.assignments, ...created],
+        }));
+        setAutofillSuccess(`נוספו ${created.length} שיבוצים`);
+        setTimeout(() => setAutofillSuccess(null), 4000);
+      } else {
+        setAutofillSuccess('אין משמרות ריקות לשיבוץ');
+        setTimeout(() => setAutofillSuccess(null), 3000);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'שגיאה בשיבוץ אוטומטי');
+    } finally {
+      setAutofillLoading(false);
+    }
+  }, [selectedBoardId, weekDates, updateOverview, setError]);
 
   if (profile === null || !canManage(profile.role)) {
     return (
@@ -820,31 +874,47 @@ export default function AssignmentsPage() {
 
       {viewMode === 'calendar' && (
         <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
               לוח שבועי
             </h2>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              {autofillSuccess && (
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  {autofillSuccess}
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => setWeekOffset((o) => o - 1)}
-                className="cursor-pointer rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
-                title="שבוע קודם"
+                onClick={handleAutofill}
+                disabled={!selectedBoardId || autofillLoading}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
               >
-                →
+                <BoltIcon className="h-4 w-4" aria-hidden />
+                {autofillLoading ? 'משבץ…' : 'שיבוץ אוטומטי'}
               </button>
-              <span className="min-w-[120px] text-center text-sm text-zinc-700 dark:text-zinc-300">
-                {weekDates[0] && formatDateHe(weekDates[0])} –{' '}
-                {weekDates[6] && formatDateHe(weekDates[6])}
-              </span>
-              <button
-                type="button"
-                onClick={() => setWeekOffset((o) => o + 1)}
-                className="cursor-pointer rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
-                title="שבוע הבא"
-              >
-                ←
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((o) => o - 1)}
+                  className="cursor-pointer rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
+                  title="שבוע קודם"
+                >
+                  →
+                </button>
+                <span className="min-w-[120px] text-center text-sm text-zinc-700 dark:text-zinc-300">
+                  {weekDates[0] && formatDateHe(weekDates[0])} –{' '}
+                  {weekDates[6] && formatDateHe(weekDates[6])}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((o) => o + 1)}
+                  className="cursor-pointer rounded-lg border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700"
+                  title="שבוע הבא"
+                >
+                  ←
+                </button>
+              </div>
             </div>
           </div>
           <div className="-mx-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white sm:mx-0 sm:rounded-2xl dark:border-zinc-800 dark:bg-zinc-900/80">
@@ -922,31 +992,28 @@ export default function AssignmentsPage() {
                                 shift.date,
                                 cellType
                               );
+                            const workload =
+                              assignmentCountByWorkerThisWeek[a.worker_id] ?? 0;
                             return (
                               <div
                                 key={a.id}
                                 className="flex items-center justify-between gap-1 text-xs"
                               >
-                                <span className="inline-flex items-center gap-1">
-                                  {workerDisplayName(w)}
+                                <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                                  <span className="font-medium">
+                                    {workerDisplayName(w)}
+                                  </span>
+                                  {workload > 0 && (
+                                    <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
+                                      — {workload} משמרות השבוע
+                                    </span>
+                                  )}
                                   {hasConstraint && (
                                     <span
-                                      className="inline-flex shrink-0 text-amber-500"
+                                      className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
                                       title="קיים אילוץ בתאריך זה"
                                     >
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                        className="h-3.5 w-3.5"
-                                        aria-hidden
-                                      >
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
+                                      ⚠️ קונפליקט
                                     </span>
                                   )}
                                 </span>
@@ -1131,26 +1198,27 @@ export default function AssignmentsPage() {
                                   className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1 dark:bg-zinc-800/80"
                                 >
                                   <div className="flex items-center gap-2">
-                                    <span className="inline-flex items-center gap-1 font-medium text-zinc-900 dark:text-zinc-100">
+                                    <span className="inline-flex flex-wrap items-center gap-1.5 font-medium text-zinc-900 dark:text-zinc-100">
                                       {workerDisplayName(worker)}
+                                      {(assignmentCountByWorkerThisWeek[
+                                        a.worker_id
+                                      ] ?? 0) > 0 && (
+                                        <span className="text-zinc-500 dark:text-zinc-400">
+                                          —
+                                          {
+                                            assignmentCountByWorkerThisWeek[
+                                              a.worker_id
+                                            ]
+                                          }{' '}
+                                          משמרות השבוע
+                                        </span>
+                                      )}
                                       {hasConstraint && (
                                         <span
-                                          className="inline-flex shrink-0 text-amber-500"
+                                          className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
                                           title="קיים אילוץ בתאריך זה"
                                         >
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 24 24"
-                                            fill="currentColor"
-                                            className="h-3.5 w-3.5"
-                                            aria-hidden
-                                          >
-                                            <path
-                                              fillRule="evenodd"
-                                              d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z"
-                                              clipRule="evenodd"
-                                            />
-                                          </svg>
+                                          ⚠️ קונפליקט
                                         </span>
                                       )}
                                     </span>
