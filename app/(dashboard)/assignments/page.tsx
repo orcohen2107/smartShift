@@ -11,11 +11,7 @@ import type {
   ShiftBoard,
   Worker,
 } from '@/lib/utils/interfaces';
-import {
-  canManage,
-  ConstraintStatus,
-  ShiftType,
-} from '@/lib/utils/enums';
+import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
 import Checkbox from '@/components/Checkbox';
 import Dropdown from '@/components/Dropdown';
 
@@ -156,11 +152,13 @@ export default function AssignmentsPage() {
     return overview?.assignments.filter((a) => a.shift_id === shiftId) ?? [];
   }
 
-  /** בודק אם לעובד יש אילוץ בתאריך הנתון (כל סוג) */
-  function hasConstraintForDate(workerId: string, date: string): boolean {
-    return (overview?.constraints ?? []).some(
+  function hasConstraintForShift(workerId: string, date: string, shiftType: ShiftType): boolean {
+    const constraints = (overview?.constraints ?? []).filter(
       (c) => c.worker_id === workerId && c.date === date
     );
+    if (constraints.length === 0) return false;
+    if (shiftType === ShiftType.FullDay) return true;
+    return constraints.some((c) => c.type === shiftType);
   }
 
   function hasUnavailableConstraint(
@@ -251,7 +249,16 @@ export default function AssignmentsPage() {
           workersById[initialWorkerId]?.full_name ??
           workersById[initialWorkerId]?.email ??
           'העובד';
-        if (hasConstraintForDate(initialWorkerId, createShiftForm.date)) {
+        const shiftType = selectedBoard.single_person_for_day
+          ? ShiftType.FullDay
+          : createShiftForm.type;
+        if (
+          hasConstraintForShift(
+            initialWorkerId,
+            createShiftForm.date,
+            shiftType
+          )
+        ) {
           setPendingConstraintConfirm({
             shiftId: createdShift.id,
             workerId: initialWorkerId,
@@ -300,7 +307,7 @@ export default function AssignmentsPage() {
       workersById[workerId]?.full_name ??
       workersById[workerId]?.email ??
       'העובד';
-    if (hasConstraintForDate(workerId, shift.date)) {
+    if (hasConstraintForShift(workerId, shift.date, shift.type)) {
       setPendingConstraintConfirm({ shiftId: shift.id, workerId, workerName });
       return;
     }
@@ -397,7 +404,10 @@ export default function AssignmentsPage() {
         workersById[workerId]?.full_name ??
         workersById[workerId]?.email ??
         'העובד';
-      if (hasConstraintForDate(workerId, date)) {
+      const actualShiftType = selectedBoard.single_person_for_day
+        ? ShiftType.FullDay
+        : shiftType;
+      if (hasConstraintForShift(workerId, date, actualShiftType)) {
         setAssigningCellKey(null);
         setPendingConstraintConfirm({
           shiftId: shift.id,
@@ -907,7 +917,11 @@ export default function AssignmentsPage() {
                             const w = workersById[a.worker_id];
                             const hasConstraint =
                               shift &&
-                              hasConstraintForDate(a.worker_id, shift.date);
+                              hasConstraintForShift(
+                                a.worker_id,
+                                shift.date,
+                                cellType
+                              );
                             return (
                               <div
                                 key={a.id}
@@ -1101,9 +1115,10 @@ export default function AssignmentsPage() {
                           <ul className="space-y-1 text-xs">
                             {shiftAssignments.map((a) => {
                               const worker = workersById[a.worker_id];
-                              const hasConstraint = hasConstraintForDate(
+                              const hasConstraint = hasConstraintForShift(
                                 a.worker_id,
-                                shift.date
+                                shift.date,
+                                shift.type
                               );
                               const unavailable = hasUnavailableConstraint(
                                 worker?.user_id ?? null,
