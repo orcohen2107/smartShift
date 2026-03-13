@@ -61,10 +61,10 @@ export function Navbar() {
   const linkClass = useCallback(
     (href: string) => {
       const active = pathname === href;
-      return `flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+      return `flex min-h-[40px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200 ${
         active
-          ? 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500 dark:text-emerald-950'
-          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50'
+          ? 'bg-emerald-500/15 text-emerald-700 shadow-none dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-500/30 dark:ring-emerald-500/25'
+          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-50'
       }`;
     },
     [pathname]
@@ -81,10 +81,10 @@ export function Navbar() {
   };
 
   return (
-    <header className="border-b border-zinc-200/80 bg-white/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/95">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2 sm:px-4 sm:py-3">
+    <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/90">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-6">
-          <span className="shrink-0 text-base font-bold tracking-tight text-zinc-800 dark:text-zinc-100">
+          <span className="shrink-0 text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             SmartShift
           </span>
           <nav className="hidden items-center gap-1 md:flex">
@@ -96,14 +96,14 @@ export function Navbar() {
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {profile?.full_name && (
-            <span className="hidden max-w-[120px] truncate text-xs font-medium text-zinc-300 sm:inline dark:text-zinc-400">
+            <span className="hidden max-w-[140px] truncate text-sm font-medium text-zinc-600 sm:inline dark:text-zinc-400">
               שלום, {profile.full_name}
             </span>
           )}
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/80 text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700/80 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
             title={theme === 'dark' ? 'מעבר למצב בהיר' : 'מעבר למצב כהה'}
           >
             {theme === 'dark' ? (
@@ -115,7 +115,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={handleLogout}
-            className="hidden min-h-[36px] items-center gap-2 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 sm:flex dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="hidden min-h-[36px] items-center gap-2 rounded-xl border border-zinc-200/80 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-900 sm:flex dark:border-zinc-700/80 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
           >
             <ArrowRightOnRectangleIcon className="h-4 w-4" aria-hidden />
             יציאה
@@ -124,7 +124,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((o) => !o)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 md:hidden dark:border-zinc-700"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200/80 md:hidden dark:border-zinc-700/80"
             aria-label={mobileMenuOpen ? 'סגור תפריט' : 'פתח תפריט'}
           >
             {mobileMenuOpen ? (

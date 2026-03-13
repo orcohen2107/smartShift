@@ -62,10 +62,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <ProfileProvider>
       <AssignmentsProvider>
         <ConstraintsProvider>
-          <div className="min-h-screen overflow-x-hidden bg-zinc-100 dark:bg-zinc-950">
+          <div className="min-h-screen overflow-x-hidden bg-zinc-100 dark:bg-gradient-to-b dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900/50">
             <Navbar />
             <GuestRedirect>
-              <main className="mx-auto max-w-5xl min-w-0 px-3 py-4 sm:px-4 sm:py-6">
+              <main className="mx-auto max-w-5xl min-w-0 px-3 py-3 sm:px-4 sm:py-4">
                 {children}
               </main>
             </GuestRedirect>
