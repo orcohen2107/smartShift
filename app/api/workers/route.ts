@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
+import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import type { Worker, WorkerPostBody } from '@/lib/utils/interfaces';
 
 export async function GET(req: Request) {
@@ -8,21 +9,35 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase, profile } = res;
-  let query = supabase
+  const { profile } = res;
+  const admin = getSupabaseAdmin();
+  let query = admin
     .from('workers')
     .select('*')
     .order('full_name', { ascending: true });
   if (profile.system_id) {
     query = query.eq('system_id', profile.system_id);
   }
-  const { data, error } = await query;
+  const { data: workers, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ workers: (data ?? []) as Worker[] });
+  const list = (workers ?? []) as Worker[];
+  const workerUserIds = list.map((w) => w.user_id).filter(Boolean) as string[];
+  if (workerUserIds.length > 0) {
+    const { data: guestProfiles } = await admin
+      .from('profiles')
+      .select('id')
+      .in('id', workerUserIds)
+      .eq('role', 'guest');
+    const guestIds = new Set((guestProfiles ?? []).map((p) => p.id));
+    const filtered = list.filter((w) => !w.user_id || !guestIds.has(w.user_id));
+    return NextResponse.json({ workers: filtered });
+  }
+
+  return NextResponse.json({ workers: list });
 }
 
 export async function POST(req: Request) {

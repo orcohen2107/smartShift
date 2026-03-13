@@ -113,10 +113,11 @@ export async function GET(req: Request) {
     ...((allWorkers ?? []).map((w) => w.user_id).filter(Boolean) as string[]),
   ]);
 
-  // סנכרון: כל פרופיל במערכת חייב שורת worker כדי להופיע בשיבוץ (מי שהתחבר וטרם רץ ensure)
+  // סנכרון: כל פרופיל worker/manager במערכת חייב שורת worker – אורחים ומפקדים לא
   let profilesQuery = admin
     .from('profiles')
-    .select('id, full_name, email, system_id, is_reserves');
+    .select('id, full_name, email, system_id, is_reserves, role')
+    .in('role', ['manager', 'worker']);
   if (systemId) {
     profilesQuery = profilesQuery.eq('system_id', systemId);
   } else {
@@ -158,7 +159,23 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
-  const allWorkersSynced = workersFinal ?? allWorkers ?? [];
+  let allWorkersSynced = workersFinal ?? allWorkers ?? [];
+
+  // סינון אורחים – לא יופיעו בבחירת כונן
+  const workerUserIds = allWorkersSynced
+    .map((w) => w.user_id)
+    .filter(Boolean) as string[];
+  if (workerUserIds.length > 0) {
+    const { data: guestProfiles } = await admin
+      .from('profiles')
+      .select('id')
+      .in('id', workerUserIds)
+      .eq('role', 'guest');
+    const guestIds = new Set((guestProfiles ?? []).map((p) => p.id));
+    allWorkersSynced = allWorkersSynced.filter(
+      (w) => !w.user_id || !guestIds.has(w.user_id)
+    );
+  }
 
   const dates = Array.from(new Set((shifts ?? []).map((s) => s.date)));
   const typesFilter = allTypes

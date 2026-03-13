@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api/apiFetch';
 import type { Profile, System, Worker } from '@/lib/utils/interfaces';
-import { Role } from '@/lib/utils/enums';
+import { canManage, Role } from '@/lib/utils/enums';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -80,15 +80,20 @@ export default function SettingsPage() {
     }
   }
 
-  async function handlePromote(id: string) {
+  async function handlePromote(id: string, role: 'manager' | 'commander') {
     setError(null);
     setPromotingId(id);
     try {
       await apiFetch<{ profile: Profile }>(`/api/profiles/${id}/promote`, {
         method: 'POST',
+        json: { role },
       });
       setProfiles((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, role: Role.Manager } : p))
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, role: role === 'manager' ? Role.Manager : Role.Commander }
+            : p
+        )
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to promote');
@@ -208,38 +213,55 @@ export default function SettingsPage() {
           משתמשים ומנהלים
         </h2>
         <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
-          {profiles.map((p) => (
-            <li
-              key={p.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
-            >
-              <div className="min-w-0 flex-1">
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {p.full_name ?? p.email ?? 'ללא שם'}
-                </span>
-                {p.email && (
-                  <span className="mr-2 text-zinc-500 dark:text-zinc-400">
-                    ({p.email})
+          {profiles
+            .filter((p) => p.role !== Role.Guest)
+            .map((p) => (
+              <li
+                key={p.id}
+                className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {p.full_name ?? p.email ?? 'ללא שם'}
                   </span>
+                  {p.email && (
+                    <span className="mr-2 text-zinc-500 dark:text-zinc-400">
+                      ({p.email})
+                    </span>
+                  )}
+                  {p.role === Role.Manager && (
+                    <span className="mr-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">
+                      מנהל
+                    </span>
+                  )}
+                  {p.role === Role.Commander && (
+                    <span className="mr-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-500/20 dark:text-sky-200">
+                      מפקד
+                    </span>
+                  )}
+                </div>
+                {!canManage(p.role) && (
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handlePromote(p.id, 'manager')}
+                      disabled={!!promotingId}
+                      className="min-h-[40px] cursor-pointer rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+                    >
+                      {promotingId === p.id ? 'מעדכן...' : 'מנהל'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePromote(p.id, 'commander')}
+                      disabled={!!promotingId}
+                      className="min-h-[40px] cursor-pointer rounded-lg bg-sky-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-sky-500 disabled:opacity-50 dark:bg-sky-500 dark:text-sky-950 dark:hover:bg-sky-400"
+                    >
+                      מפקד
+                    </button>
+                  </div>
                 )}
-                {p.role === Role.Manager && (
-                  <span className="mr-2 inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">
-                    מנהל
-                  </span>
-                )}
-              </div>
-              {p.role !== Role.Manager && (
-                <button
-                  type="button"
-                  onClick={() => handlePromote(p.id)}
-                  disabled={!!promotingId}
-                  className="min-h-[40px] shrink-0 cursor-pointer rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
-                >
-                  {promotingId === p.id ? 'מעדכן...' : 'הפוך למנהל'}
-                </button>
-              )}
-            </li>
-          ))}
+              </li>
+            ))}
         </ul>
       </section>
     </div>

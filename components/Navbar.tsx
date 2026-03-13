@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { useTheme } from '@/components/ThemeProvider';
 import { useProfile } from '@/contexts/ProfileContext';
-import { Role } from '@/lib/utils/enums';
+import { canManage } from '@/lib/utils/enums';
 
 const baseLinks = [
   { href: '/dashboard', label: 'דשבורד' },
@@ -29,21 +29,19 @@ export function Navbar() {
     router.replace('/login');
   }, [router]);
 
-  const managerLinks = useMemo(
-    () =>
-      profile?.role === Role.Manager
-        ? [
-            { href: '/assignments', label: 'שיבוצים' },
-            { href: '/settings', label: 'הגדרות' },
-          ]
-        : [],
-    [profile?.role]
-  );
-
-  const allLinks = useMemo(
-    () => [...baseLinks, ...managerLinks],
-    [managerLinks]
-  );
+  const allLinks = useMemo(() => {
+    if (!profile) return baseLinks;
+    if (profile.role === 'guest')
+      return [{ href: '/dashboard', label: 'דשבורד' }];
+    if (canManage(profile.role)) {
+      return [
+        ...baseLinks,
+        { href: '/assignments', label: 'שיבוצים' },
+        { href: '/settings', label: 'הגדרות' },
+      ];
+    }
+    return baseLinks;
+  }, [profile]);
 
   const linkClass = useCallback(
     (href: string) => {

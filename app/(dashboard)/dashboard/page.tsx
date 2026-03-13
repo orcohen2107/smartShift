@@ -6,7 +6,7 @@ import { useAssignments } from '@/contexts/AssignmentsContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import Dropdown from '@/components/Dropdown';
 import type { Shift, Worker } from '@/lib/utils/interfaces';
-import { Role, ShiftType } from '@/lib/utils/enums';
+import { canManage, ShiftType } from '@/lib/utils/enums';
 
 const DAY_NAMES_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -56,7 +56,7 @@ export default function DashboardPage() {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const isManager = profile?.role === Role.Manager;
+  const canManageShifts = profile && canManage(profile.role);
 
   useEffect(() => {
     if (hasCachedData || profile === null) return;
@@ -198,16 +198,16 @@ export default function DashboardPage() {
               {weekOffset === 0
                 ? 'השבוע'
                 : weekOffset === 1
-                ? 'שבוע הבא'
-                : weekOffset === -1
-                ? 'שבוע קודם'
-                : weekOffset > 0
-                ? `עוד ${weekOffset === 2 ? 'שבועיים' : `${weekOffset} שבועות`}`
-                : `לפני ${
-                    Math.abs(weekOffset) === 2
-                      ? 'שבועיים'
-                      : `${Math.abs(weekOffset)} שבועות`
-                  }`}
+                  ? 'שבוע הבא'
+                  : weekOffset === -1
+                    ? 'שבוע קודם'
+                    : weekOffset > 0
+                      ? `עוד ${weekOffset === 2 ? 'שבועיים' : `${weekOffset} שבועות`}`
+                      : `לפני ${
+                          Math.abs(weekOffset) === 2
+                            ? 'שבועיים'
+                            : `${Math.abs(weekOffset)} שבועות`
+                        }`}
             </span>
             <button
               type="button"
@@ -248,29 +248,31 @@ export default function DashboardPage() {
               />
             </div>
           )}
-          {isManager && overview?.workers && overview.workers.length > 0 && (
-            <div className="flex w-40 flex-col items-center space-y-1">
-              <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                צפייה בסיכום שיבוצים של
-              </label>
-              <Dropdown
-                placeholder="אני (המשתמש המחובר)"
-                value={selectedWorkerId ?? ''}
-                onSelect={(id) => setSelectedWorkerId(id || null)}
-                items={[
-                  { value: '', label: 'אני (המשתמש המחובר)' },
-                  ...workersSorted
-                    .filter(
-                      (w) => w.user_id !== profile?.id && w.id !== profile?.id
-                    )
-                    .map((w) => ({
-                      value: w.id,
-                      label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}`,
-                    })),
-                ]}
-              />
-            </div>
-          )}
+          {canManageShifts &&
+            overview?.workers &&
+            overview.workers.length > 0 && (
+              <div className="flex w-40 flex-col items-center space-y-1">
+                <label className="block text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  צפייה בסיכום שיבוצים של
+                </label>
+                <Dropdown
+                  placeholder="אני (המשתמש המחובר)"
+                  value={selectedWorkerId ?? ''}
+                  onSelect={(id) => setSelectedWorkerId(id || null)}
+                  items={[
+                    { value: '', label: 'אני (המשתמש המחובר)' },
+                    ...workersSorted
+                      .filter(
+                        (w) => w.user_id !== profile?.id && w.id !== profile?.id
+                      )
+                      .map((w) => ({
+                        value: w.id,
+                        label: `${workerDisplayName(w)}${!w.user_id ? ' (טרם נרשם)' : ''}`,
+                      })),
+                  ]}
+                />
+              </div>
+            )}
         </div>
       </div>
 
@@ -399,7 +401,7 @@ export default function DashboardPage() {
         >
           אילוצים
         </Link>
-        {isManager && (
+        {canManageShifts && (
           <Link
             href="/assignments"
             className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"

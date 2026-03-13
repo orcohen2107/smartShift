@@ -6,7 +6,7 @@ import { useConstraints } from '@/contexts/ConstraintsContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import Dropdown from '@/components/Dropdown';
 import type { Constraint } from '@/lib/utils/interfaces';
-import { ConstraintStatus, Role, ShiftType } from '@/lib/utils/enums';
+import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
 
 type ConstraintInput = {
   date: string;
@@ -55,7 +55,6 @@ export default function ConstraintsPage() {
     load,
     hasCachedData,
   } = useConstraints();
-
   const [mounted, setMounted] = useState(false);
   const defaultRange = useMemo(
     () => (mounted ? getCurrentWeekRange() : { from: '', to: '' }),
@@ -100,7 +99,7 @@ export default function ConstraintsPage() {
   // טעינה רק בכניסה ראשונה (אין cache) – מנהל מקבל אילוצים של כולם עם שמות
   useEffect(() => {
     if (hasCachedData || profile === null) return;
-    void load(profile.role === Role.Manager ? { all: true } : undefined);
+    void load(canManage(profile.role) ? { all: true } : undefined);
   }, [hasCachedData, profile]);
 
   const filteredItems = useMemo(
@@ -432,7 +431,9 @@ export default function ConstraintsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           <div className="space-y-1">
             <label className={labelClass}>
-              {mode === 'recurring' || mode === 'range' ? 'תאריך התחלה' : 'תאריך'}
+              {mode === 'recurring' || mode === 'range'
+                ? 'תאריך התחלה'
+                : 'תאריך'}
             </label>
             <input
               type="date"
@@ -492,9 +493,7 @@ export default function ConstraintsPage() {
                 <Dropdown
                   value={rangeShiftMode}
                   onSelect={(v) =>
-                    setRangeShiftMode(
-                      (v as 'day' | 'night' | 'both') ?? 'day'
-                    )
+                    setRangeShiftMode((v as 'day' | 'night' | 'both') ?? 'day')
                   }
                   items={[
                     { value: 'day', label: 'משמרת יום' },

@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
-import type { SignupBody } from '@/lib/utils/interfaces';
+import type { SignupBody, SignupUserType } from '@/lib/utils/interfaces';
 
 export async function POST(req: Request) {
-  const { email, password, full_name, system_id, is_reserves } =
-    (await req.json()) as SignupBody;
+  const {
+    email,
+    password,
+    full_name,
+    system_id,
+    is_reserves,
+    user_type = 'worker',
+  } = (await req.json()) as SignupBody;
 
   if (!email || !password) {
     return NextResponse.json(
@@ -13,11 +19,15 @@ export async function POST(req: Request) {
     );
   }
 
+  const validTypes: SignupUserType[] = ['worker', 'worker_reserves', 'guest'];
+  const ut = validTypes.includes(user_type) ? user_type : 'worker';
+
   const supabase = getSupabaseAdmin();
   const metadata: Record<string, unknown> = {};
   if (full_name) metadata.full_name = full_name.trim();
   if (system_id) metadata.system_id = system_id;
-  metadata.is_reserves = is_reserves === true;
+  metadata.user_type = ut;
+  metadata.is_reserves = ut === 'worker_reserves';
 
   const { data, error } = await supabase.auth.signUp({
     email,

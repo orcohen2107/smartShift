@@ -11,7 +11,11 @@ import type {
   ShiftBoard,
   Worker,
 } from '@/lib/utils/interfaces';
-import { ConstraintStatus, Role, ShiftType } from '@/lib/utils/enums';
+import {
+  canManage,
+  ConstraintStatus,
+  ShiftType,
+} from '@/lib/utils/enums';
 import Checkbox from '@/components/Checkbox';
 import Dropdown from '@/components/Dropdown';
 
@@ -74,7 +78,7 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     if (profile === null) return;
-    if (profile.role !== Role.Manager) {
+    if (!canManage(profile.role)) {
       router.replace('/dashboard');
     }
   }, [profile, router]);
@@ -105,21 +109,22 @@ export default function AssignmentsPage() {
     return map;
   }, [overview]);
 
-  const assignmentCountByWorkerThisWeek: Record<string, number> = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const assignments = overview?.assignments ?? [];
-    const datesInWeek = new Set(getWeekDates(weekOffset));
-    const shiftIdsInWeek = new Set(
-      (overview?.shifts ?? [])
-        .filter((s) => datesInWeek.has(s.date))
-        .map((s) => s.id)
-    );
-    assignments.forEach((a) => {
-      if (!shiftIdsInWeek.has(a.shift_id)) return;
-      counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
-    });
-    return counts;
-  }, [overview?.assignments, overview?.shifts, weekOffset]);
+  const assignmentCountByWorkerThisWeek: Record<string, number> =
+    useMemo(() => {
+      const counts: Record<string, number> = {};
+      const assignments = overview?.assignments ?? [];
+      const datesInWeek = new Set(getWeekDates(weekOffset));
+      const shiftIdsInWeek = new Set(
+        (overview?.shifts ?? [])
+          .filter((s) => datesInWeek.has(s.date))
+          .map((s) => s.id)
+      );
+      assignments.forEach((a) => {
+        if (!shiftIdsInWeek.has(a.shift_id)) return;
+        counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
+      });
+      return counts;
+    }, [overview?.assignments, overview?.shifts, weekOffset]);
 
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
@@ -457,7 +462,7 @@ export default function AssignmentsPage() {
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
-  if (profile === null || profile.role !== Role.Manager) {
+  if (profile === null || !canManage(profile.role)) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
@@ -770,8 +775,7 @@ export default function AssignmentsPage() {
                   const count = assignmentCountByWorkerThisWeek[w.id] ?? 0;
                   const suffixParts: string[] = [];
                   if (!w.user_id) suffixParts.push('טרם נרשם');
-                  if (count > 0)
-                    suffixParts.push(`${count} שיבוצים השבוע`);
+                  if (count > 0) suffixParts.push(`${count} שיבוצים השבוע`);
                   const suffix =
                     suffixParts.length > 0
                       ? ` (${suffixParts.join(' · ')})`

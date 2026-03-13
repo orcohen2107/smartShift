@@ -1,12 +1,26 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { Navbar } from '@/components/Navbar';
 import { AssignmentsProvider } from '@/contexts/AssignmentsContext';
 import { ConstraintsProvider } from '@/contexts/ConstraintsContext';
-import { ProfileProvider } from '@/contexts/ProfileContext';
+import { ProfileProvider, useProfile } from '@/contexts/ProfileContext';
+
+function GuestRedirect({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const profile = useProfile();
+
+  useEffect(() => {
+    if (profile?.role === 'guest' && pathname !== '/dashboard') {
+      router.replace('/dashboard');
+    }
+  }, [profile?.role, pathname, router]);
+
+  return <>{children}</>;
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -45,9 +59,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <ConstraintsProvider>
           <div className="min-h-screen overflow-x-hidden bg-zinc-50 dark:bg-zinc-950">
             <Navbar />
-            <main className="mx-auto max-w-5xl min-w-0 px-3 py-4 sm:px-4 sm:py-6">
-              {children}
-            </main>
+            <GuestRedirect>
+              <main className="mx-auto max-w-5xl min-w-0 px-3 py-4 sm:px-4 sm:py-6">
+                {children}
+              </main>
+            </GuestRedirect>
           </div>
         </ConstraintsProvider>
       </AssignmentsProvider>

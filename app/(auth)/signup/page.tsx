@@ -2,9 +2,14 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { System } from '@/lib/utils/interfaces';
-import Checkbox from '@/components/Checkbox';
+import type { SignupUserType, System } from '@/lib/utils/interfaces';
 import Dropdown from '@/components/Dropdown';
+
+const USER_TYPE_OPTIONS: { value: SignupUserType; label: string }[] = [
+  { value: 'worker', label: 'כונן רגיל' },
+  { value: 'worker_reserves', label: 'כונן במילואים' },
+  { value: 'guest', label: 'אורח (צפייה בלבד)' },
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,7 +18,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [systemId, setSystemId] = useState<string>('');
-  const [isReserves, setIsReserves] = useState(false);
+  const [userType, setUserType] = useState<SignupUserType>('worker');
   const [systems, setSystems] = useState<System[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +52,7 @@ export default function SignupPage() {
           password,
           full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           system_id: systemId || undefined,
-          is_reserves: isReserves,
+          user_type: userType,
         }),
       });
 
@@ -161,13 +166,19 @@ export default function SignupPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="is_reserves"
-                  label="איש מילואים"
-                  checked={isReserves}
-                  onChange={(e) => setIsReserves(e.target.checked)}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  סוג משתמש <span className="text-red-400">*</span>
+                </label>
+                <Dropdown
+                  placeholder="בחר סוג משתמש…"
+                  value={userType}
+                  onSelect={(v) => setUserType(v as SignupUserType)}
+                  items={USER_TYPE_OPTIONS}
                 />
+                <p className="text-xs text-zinc-500">
+                  כונן רגיל / כונן במילואים – יקבל שיבוצים. אורח – צפייה בלבד.
+                </p>
               </div>
 
               {error && (
