@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BoltIcon } from '@heroicons/react/20/solid';
+import { BoltIcon, TrashIcon } from '@heroicons/react/20/solid';
 import { apiFetch } from '@/lib/api/apiFetch';
 import { useAssignments } from '@/contexts/AssignmentsContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import type {
+  Assignment,
   Constraint,
   Shift,
   ShiftBoard,
@@ -15,6 +16,8 @@ import type {
 import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
 import Checkbox from '@/components/Checkbox';
 import Dropdown from '@/components/Dropdown';
+import { ShiftDetailsDrawer } from '@/components/assignments/ShiftDetailsDrawer';
+import { WorkerDetailsDrawer } from '@/components/assignments/WorkerDetailsDrawer';
 
 type CreateShiftInput = {
   date: string;
@@ -74,6 +77,13 @@ export default function AssignmentsPage() {
     useState(false);
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [autofillSuccess, setAutofillSuccess] = useState<string | null>(null);
+  const [shiftDrawer, setShiftDrawer] = useState<{
+    date: string;
+    cellType: ShiftType;
+    shift: Shift | null;
+    assigns: Assignment[];
+  } | null>(null);
+  const [workerDrawer, setWorkerDrawer] = useState<Worker | null>(null);
 
   useEffect(() => {
     if (profile === null) return;
@@ -532,6 +542,40 @@ export default function AssignmentsPage() {
   }
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  const shiftsById: Record<string, Shift> = useMemo(() => {
+    const map: Record<string, Shift> = {};
+    (overview?.shifts ?? []).forEach((s) => {
+      map[s.id] = s;
+    });
+    return map;
+  }, [overview?.shifts]);
+
+  const datesInWeekSet = useMemo(() => new Set(weekDates), [weekDates]);
+  const shiftIdsInWeek = useMemo(() => {
+    const ids = new Set<string>();
+    (overview?.shifts ?? []).forEach((s) => {
+      if (
+        datesInWeekSet.has(s.date) &&
+        (!selectedBoardId || s.board_id === selectedBoardId)
+      ) {
+        ids.add(s.id);
+      }
+    });
+    return ids;
+  }, [overview?.shifts, datesInWeekSet, selectedBoardId]);
+  const assignmentsInWeek = useMemo(
+    () =>
+      (overview?.assignments ?? []).filter((a) =>
+        shiftIdsInWeek.has(a.shift_id)
+      ),
+    [overview?.assignments, shiftIdsInWeek]
+  );
+  const constraintsInWeek = useMemo(
+    () =>
+      (overview?.constraints ?? []).filter((c) => datesInWeekSet.has(c.date)),
+    [overview?.constraints, datesInWeekSet]
+  );
 
   const weeklyProgress = useMemo(() => {
     const datesSet = new Set(weekDates);
@@ -1076,7 +1120,7 @@ export default function AssignmentsPage() {
 
                   const renderCell = (
                     shift: Shift | null | undefined,
-                    assigns: { id: string; worker_id: string }[],
+                    assigns: Assignment[],
                     cellType: ShiftType
                   ) => {
                     const isAssigningHere = assigningCellKey?.startsWith(
@@ -1094,7 +1138,28 @@ export default function AssignmentsPage() {
                     return (
                       <td className="p-2 align-top" key={String(cellType)}>
                         <div
-                          className={`min-h-[44px] rounded-lg border border-dashed p-2 transition-colors duration-200 hover:bg-white/3 dark:hover:bg-white/[0.03] ${
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            setShiftDrawer({
+                              date,
+                              cellType,
+                              shift: shift ?? null,
+                              assigns,
+                            })
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setShiftDrawer({
+                                date,
+                                cellType,
+                                shift: shift ?? null,
+                                assigns,
+                              });
+                            }
+                          }}
+                          className={`min-h-[44px] cursor-pointer rounded-lg border border-dashed p-2 transition-colors duration-200 hover:border-zinc-300 hover:bg-white/5 dark:hover:border-zinc-600 dark:hover:bg-white/[0.05] ${
                             !shift && isPast
                               ? 'border-zinc-100 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/50'
                               : 'border-zinc-200 dark:border-zinc-700'
@@ -1136,7 +1201,20 @@ export default function AssignmentsPage() {
                             return (
                               <div
                                 key={a.id}
-                                className="flex items-center justify-between gap-1 text-xs"
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (w) setWorkerDrawer(w);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (w) setWorkerDrawer(w);
+                                  }
+                                }}
+                                className="flex cursor-pointer items-center justify-between gap-1 rounded-md px-1 py-0.5 text-xs transition-colors hover:bg-white/10 dark:hover:bg-white/5"
                               >
                                 <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                                   <span
@@ -1165,10 +1243,14 @@ export default function AssignmentsPage() {
                                 {canEdit && shift && (
                                   <button
                                     type="button"
-                                    onClick={() => handleUnassign(a.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUnassign(a.id);
+                                    }}
                                     disabled={unassigningId === a.id}
-                                    className="cursor-pointer text-red-500 hover:underline disabled:opacity-50"
+                                    className="inline-flex cursor-pointer items-center gap-1 text-red-500 hover:underline disabled:opacity-50 dark:text-red-400"
                                   >
+                                    <TrashIcon className="h-3.5 w-3.5" />
                                     {unassigningId === a.id ? 'מסיר…' : 'הסר'}
                                   </button>
                                 )}
@@ -1178,13 +1260,14 @@ export default function AssignmentsPage() {
                           {canEdit && !isAssigningHere && (
                             <button
                               type="button"
-                              onClick={() =>
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setAssigningCell({
                                   date,
                                   type: cellType,
                                   shiftId: shift?.id ?? null,
-                                })
-                              }
+                                });
+                              }}
                               className="mt-1 cursor-pointer text-xs font-medium text-emerald-600 dark:text-emerald-400"
                             >
                               + שבץ כונן
@@ -1252,17 +1335,9 @@ export default function AssignmentsPage() {
             </table>
           </div>
           {assigningCell && (
-            <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/50 p-4">
-              <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  שיבוץ ל־{formatDateHe(assigningCell.date)} –{' '}
-                  {assigningCell.type === 'full_day'
-                    ? 'כל היום'
-                    : assigningCell.type === 'day'
-                      ? 'יום'
-                      : 'לילה'}
-                </p>
-                <div className="mb-3">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className="flex w-full max-w-sm flex-col rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-2">
                   <Dropdown
                     placeholder="בחירת כונן…"
                     value=""
@@ -1289,6 +1364,14 @@ export default function AssignmentsPage() {
                     ]}
                   />
                 </div>
+                <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
+                  שיבוץ ל־{formatDateHe(assigningCell.date)} –{' '}
+                  {assigningCell.type === 'full_day'
+                    ? 'כל היום'
+                    : assigningCell.type === 'day'
+                      ? 'יום'
+                      : 'לילה'}
+                </p>
                 <button
                   type="button"
                   onClick={() => setAssigningCell(null)}
@@ -1315,10 +1398,37 @@ export default function AssignmentsPage() {
             <div className="space-y-3">
               {shiftsAll.map((shift) => {
                 const shiftAssignments = getAssignmentsForShift(shift.id);
+                const cellType =
+                  shift.type === 'full_day'
+                    ? ShiftType.FullDay
+                    : shift.type === 'day'
+                      ? ShiftType.Day
+                      : ShiftType.Night;
                 return (
                   <div
                     key={shift.id}
-                    className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      setShiftDrawer({
+                        date: shift.date,
+                        cellType,
+                        shift,
+                        assigns: shiftAssignments,
+                      })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setShiftDrawer({
+                          date: shift.date,
+                          cellType,
+                          shift,
+                          assigns: shiftAssignments,
+                        });
+                      }
+                    }}
+                    className="cursor-pointer space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -1362,7 +1472,20 @@ export default function AssignmentsPage() {
                               return (
                                 <li
                                   key={a.id}
-                                  className="flex items-center justify-between rounded-xl bg-zinc-50 px-2 py-1.5 transition-colors duration-200 hover:bg-white/5 dark:bg-zinc-800/80 dark:hover:bg-white/5"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (worker) setWorkerDrawer(worker);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (worker) setWorkerDrawer(worker);
+                                    }
+                                  }}
+                                  className="flex cursor-pointer items-center justify-between rounded-xl bg-zinc-50 px-2 py-1.5 transition-colors duration-200 hover:bg-white/10 dark:bg-zinc-800/80 dark:hover:bg-white/5"
                                 >
                                   <div className="flex items-center gap-2">
                                     <span
@@ -1407,10 +1530,14 @@ export default function AssignmentsPage() {
                                     )}
                                   </div>
                                   <button
-                                    onClick={() => handleUnassign(a.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUnassign(a.id);
+                                    }}
                                     disabled={unassigningId === a.id}
-                                    className="cursor-pointer text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
+                                    className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
                                   >
+                                    <TrashIcon className="h-3.5 w-3.5" />
                                     {unassigningId === a.id ? 'מסיר…' : 'הסרה'}
                                   </button>
                                 </li>
@@ -1420,7 +1547,12 @@ export default function AssignmentsPage() {
                         )}
                       </div>
 
-                      <div className="space-y-1">
+                      <div
+                        className="space-y-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        role="presentation"
+                      >
                         <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                           שיבוץ כונן נוסף
                         </div>
@@ -1473,6 +1605,45 @@ export default function AssignmentsPage() {
           )}
         </section>
       )}
+
+      <ShiftDetailsDrawer
+        isOpen={!!shiftDrawer}
+        onClose={() => setShiftDrawer(null)}
+        shift={shiftDrawer?.shift ?? null}
+        date={shiftDrawer?.date ?? ''}
+        cellType={shiftDrawer?.cellType ?? ShiftType.Day}
+        assigns={shiftDrawer?.assigns ?? []}
+        workersById={workersById}
+        workersSorted={workersSorted}
+        getWorkerDisplayName={workerDisplayName}
+        getWorkerInitials={getWorkerInitials}
+        getWorkerAvatarColor={getWorkerAvatarColor}
+        hasConstraintForShift={hasConstraintForShift}
+        formatDateHe={formatDateHe}
+        getDayName={getDayName}
+        canEdit={!shiftDrawer?.date ? true : !isDatePast(shiftDrawer.date)}
+        onUnassign={handleUnassign}
+        onAddWorker={handleAssign}
+        onOpenAssignModal={(date, type) =>
+          setAssigningCell({ date, type, shiftId: null })
+        }
+        unassigningId={unassigningId}
+      />
+
+      <WorkerDetailsDrawer
+        isOpen={!!workerDrawer}
+        onClose={() => setWorkerDrawer(null)}
+        worker={workerDrawer}
+        workersById={workersById}
+        shiftsById={shiftsById}
+        assignmentsInWeek={assignmentsInWeek}
+        constraintsInWeek={constraintsInWeek}
+        getWorkerDisplayName={workerDisplayName}
+        getWorkerInitials={getWorkerInitials}
+        getWorkerAvatarColor={getWorkerAvatarColor}
+        formatDateHe={formatDateHe}
+        getDayName={getDayName}
+      />
     </div>
   );
 }

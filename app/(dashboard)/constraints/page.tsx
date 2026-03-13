@@ -17,7 +17,7 @@ import type { Constraint } from '@/lib/utils/interfaces';
 import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
 
 const DROPDOWN_BUTTON_CLASS =
-  'inline-flex w-full min-h-[40px] items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
+  'inline-flex w-full min-h-[36px] min-w-0 max-w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[40px] dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
 
 type ConstraintInput = {
   date: string;
@@ -331,14 +331,14 @@ export default function ConstraintsPage() {
   );
 
   const inputClass =
-    'w-full min-h-[40px] min-w-0 rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
+    'w-full min-h-[36px] min-w-0 max-w-full rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 sm:min-h-[40px] dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
   const dateInputClass =
-    'w-full min-h-[40px] min-w-0 rounded-xl border border-zinc-200/80 bg-white px-3 py-2 pe-9 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
+    'w-full min-w-0 max-w-full rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark] min-h-[36px] sm:min-h-[40px] box-border';
   const labelClass =
     'block text-xs font-medium text-zinc-600 dark:text-zinc-400';
 
   return (
-    <div className="animate-fade-in relative space-y-5">
+    <div className="animate-fade-in relative min-w-0 space-y-5">
       {loading && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60">
           <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200/80 bg-white p-5 shadow-lg dark:border-zinc-700/80 dark:bg-zinc-900/80">
@@ -404,7 +404,7 @@ export default function ConstraintsPage() {
         </div>
       )}
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
           אילוצים
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -414,9 +414,9 @@ export default function ConstraintsPage() {
 
       <form
         onSubmit={handleCreate}
-        className="space-y-4 rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60"
+        className="space-y-3 rounded-xl border border-zinc-200/80 bg-white p-2.5 shadow-sm sm:space-y-4 sm:p-4 dark:border-zinc-700/80 dark:bg-zinc-900/60"
       >
-        <div className="flex flex-row flex-wrap items-center gap-3 pb-1 sm:pb-0">
+        <div className="flex flex-row flex-wrap items-center gap-2 pb-1 sm:gap-3 sm:pb-0">
           <div className="min-w-0 flex-1 space-y-1 sm:max-w-[180px]">
             <label className={labelClass}>סוג אילוץ</label>
             <Dropdown
@@ -440,8 +440,8 @@ export default function ConstraintsPage() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-          <div className="space-y-1">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-4">
+          <div className="min-w-0 space-y-1">
             <label className={labelClass}>
               {mode === 'recurring' || mode === 'range'
                 ? 'תאריך התחלה'
@@ -460,7 +460,7 @@ export default function ConstraintsPage() {
           </div>
           {mode === 'recurring' && (
             <>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label className={labelClass}>יום בשבוע</label>
                 <Dropdown
                   value={String(recurringDayOfWeek)}
@@ -472,7 +472,7 @@ export default function ConstraintsPage() {
                   }))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label className={labelClass}>תאריך סיום (אופציונלי)</label>
                 <input
                   type="date"
@@ -490,7 +490,7 @@ export default function ConstraintsPage() {
           )}
           {mode === 'range' && (
             <>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label className={labelClass}>תאריך סיום</label>
                 <input
                   type="date"
@@ -501,7 +501,7 @@ export default function ConstraintsPage() {
                   className={dateInputClass}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="min-w-0 space-y-1">
                 <label className={labelClass}>סוג משמרת</label>
                 <Dropdown
                   value={rangeShiftMode}
@@ -519,7 +519,7 @@ export default function ConstraintsPage() {
             </>
           )}
           {mode !== 'range' && (
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <label className={labelClass}>סוג משמרת</label>
               <Dropdown
                 value={form.type}
@@ -537,7 +537,7 @@ export default function ConstraintsPage() {
               />
             </div>
           )}
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <label className={labelClass}>סטטוס</label>
             <Dropdown
               value={form.status}
@@ -554,7 +554,7 @@ export default function ConstraintsPage() {
               ]}
             />
           </div>
-          <div className="space-y-1 sm:col-span-2 md:col-span-1">
+          <div className="min-w-0 space-y-1 sm:col-span-2 md:col-span-1">
             <label className={labelClass}>הערה (אופציונלי)</label>
             <input
               type="text"
@@ -567,10 +567,10 @@ export default function ConstraintsPage() {
             />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           {successMessage && (
             <p
-              className="text-sm text-emerald-600 dark:text-emerald-400"
+              className="text-xs text-emerald-600 sm:text-sm dark:text-emerald-400"
               role="status"
             >
               {successMessage}
@@ -579,9 +579,9 @@ export default function ConstraintsPage() {
           <button
             type="submit"
             disabled={isAdding}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-60"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-60 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
           >
-            <PlusCircleIcon className="h-4 w-4" aria-hidden />
+            <PlusCircleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
             {isAdding ? 'טוען...' : 'הוספת אילוץ'}
           </button>
         </div>
@@ -594,9 +594,9 @@ export default function ConstraintsPage() {
             title="אילוצים"
             subtitle="ברירת מחדל: השבוע הנוכחי"
           />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             {filterOptions.length > 0 && (
-              <div className="col-span-2 space-y-1 md:col-span-1">
+              <div className="space-y-1 sm:col-span-2 md:col-span-1">
                 <label className={labelClass}>פילטר לפי שם</label>
                 <Dropdown
                   placeholder="הכל"
@@ -655,15 +655,15 @@ export default function ConstraintsPage() {
             </div>
           </div>
         ) : (
-          <ul className="flex max-h-[280px] flex-col gap-2 overflow-x-hidden overflow-y-auto rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-2 dark:border-zinc-700/80 dark:bg-zinc-900/30">
+          <ul className="flex max-h-[400px] flex-col gap-2 overflow-y-auto rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-2 sm:max-h-[280px] dark:border-zinc-700/80 dark:bg-zinc-900/30">
             {filteredItems.map((c) => {
               const isOwner = profile?.id === c.worker_id;
               return (
                 <li
                   key={c.id}
-                  className="group flex items-center justify-between gap-3 rounded-lg border border-transparent bg-white px-4 py-3 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-200 hover:bg-white/95 hover:shadow-md dark:border-transparent dark:bg-zinc-900/40 dark:text-zinc-100 dark:hover:border-zinc-700 dark:hover:bg-white/5 dark:hover:shadow-md"
+                  className="group flex flex-col gap-2 rounded-lg border border-transparent bg-white px-3 py-3 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:border-zinc-200 hover:bg-white/95 hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 dark:border-transparent dark:bg-zinc-900/40 dark:text-zinc-100 dark:hover:border-zinc-700 dark:hover:bg-white/5 dark:hover:shadow-md"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2.5">
                     <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
                       {c.type === ShiftType.Day ? (
                         <SunIcon
@@ -682,8 +682,8 @@ export default function ConstraintsPage() {
                         />
                       )}
                     </span>
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex flex-wrap items-baseline gap-x-1.5">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                         <span className="font-semibold text-zinc-900 dark:text-zinc-200">
                           {formatDateHe(c.date)}
                         </span>
@@ -705,7 +705,7 @@ export default function ConstraintsPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-flex shrink-0 items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${
                             c.status === ConstraintStatus.Unavailable
                               ? 'bg-red-500/15 text-red-700 ring-1 ring-red-500/20 dark:bg-red-500/20 dark:text-red-300 dark:ring-red-500/30'
                               : 'bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/20 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30'
@@ -716,7 +716,7 @@ export default function ConstraintsPage() {
                             : 'פנוי למספר שעות'}
                         </span>
                         {c.note && (
-                          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                          <span className="min-w-0 text-xs break-words text-zinc-600 dark:text-zinc-400">
                             {c.note}
                           </span>
                         )}
@@ -728,7 +728,7 @@ export default function ConstraintsPage() {
                       type="button"
                       onClick={() => handleDeleteClick(c)}
                       disabled={deletingId === c.id}
-                      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/10 hover:text-red-700 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-500/15"
+                      className="flex shrink-0 cursor-pointer items-center justify-end gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/10 hover:text-red-700 disabled:opacity-60 sm:justify-center dark:text-red-400 dark:hover:bg-red-500/15"
                     >
                       <TrashIcon className="h-3.5 w-3.5" aria-hidden />
                       {deletingId === c.id ? 'מסיר...' : 'מחיקה'}

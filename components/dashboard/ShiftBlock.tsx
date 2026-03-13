@@ -65,12 +65,12 @@ export function ShiftBlock({
       } ${styles.bg}`}
     >
       <div className="flex items-start justify-between gap-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <span className="shrink-0 opacity-70 [&>svg]:h-3 [&>svg]:w-3">
+        <div className="flex min-w-0 flex-1 items-start gap-1.5">
+          <span className="mt-0.5 shrink-0 opacity-70 [&>svg]:h-3 [&>svg]:w-3">
             {icon}
           </span>
           <span
-            className={`min-w-0 truncate text-xs font-medium ${styles.text}`}
+            className={`min-w-0 text-xs font-medium break-words ${styles.text}`}
           >
             {content}
           </span>

@@ -25,7 +25,7 @@ export function WeekRow({
 }: WeekRowProps) {
   return (
     <div
-      className={`group grid grid-cols-[1fr_1.2fr_1.2fr] gap-2 rounded-lg px-3 py-1.5 transition-all duration-200 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 ${
+      className={`group grid min-w-[280px] grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-2 rounded-lg px-3 py-1.5 transition-all duration-200 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30 ${
         isToday
           ? 'bg-emerald-500/5 ring-1 ring-emerald-500/20 dark:bg-emerald-500/10 dark:ring-emerald-500/15'
           : ''

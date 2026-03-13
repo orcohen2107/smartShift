@@ -405,8 +405,8 @@ export default function DashboardPage() {
           incompleteShifts={weekSummary.incomplete}
         />
 
-        <div className="space-y-0 overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60">
-          <div className="grid grid-cols-[1fr_1.2fr_1.2fr] gap-2 border-b border-zinc-200/80 px-3 py-1.5 dark:border-zinc-700/80">
+        <div className="space-y-0 overflow-x-auto rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60">
+          <div className="grid min-w-[280px] grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)] gap-2 border-b border-zinc-200/80 px-3 py-1.5 dark:border-zinc-700/80">
             <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
               יום / תאריך
             </span>
@@ -449,17 +449,29 @@ export default function DashboardPage() {
                 ? getShiftStatus(assignNight.length, nightRequired)
                 : 'none';
               const dayContent =
-                assignDay.length > 0
-                  ? assignDay
-                      .map((a) => workerDisplayName(workersById[a.worker_id]))
-                      .join(', ')
-                  : '—';
+                assignDay.length > 0 ? (
+                  <span className="flex flex-col gap-0.5">
+                    {assignDay.map((a) => (
+                      <span key={a.id}>
+                        {workerDisplayName(workersById[a.worker_id])}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  '—'
+                );
               const nightContent =
-                assignNight.length > 0
-                  ? assignNight
-                      .map((a) => workerDisplayName(workersById[a.worker_id]))
-                      .join(', ')
-                  : '—';
+                assignNight.length > 0 ? (
+                  <span className="flex flex-col gap-0.5">
+                    {assignNight.map((a) => (
+                      <span key={a.id}>
+                        {workerDisplayName(workersById[a.worker_id])}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  '—'
+                );
 
               return (
                 <WeekRow
