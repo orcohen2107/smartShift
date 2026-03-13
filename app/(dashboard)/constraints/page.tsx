@@ -1,12 +1,23 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  CalendarDaysIcon,
+  SunIcon,
+  MoonIcon,
+  PlusCircleIcon,
+  TrashIcon,
+} from '@heroicons/react/20/solid';
 import { apiFetch } from '@/lib/api/apiFetch';
 import { useConstraints } from '@/contexts/ConstraintsContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import Dropdown from '@/components/Dropdown';
+import { SectionHeader } from '@/components/dashboard/SectionHeader';
 import type { Constraint } from '@/lib/utils/interfaces';
 import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
+
+const DROPDOWN_BUTTON_CLASS =
+  'inline-flex w-full min-h-[40px] items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800';
 
 type ConstraintInput = {
   date: string;
@@ -94,7 +105,9 @@ export default function ConstraintsPage() {
   const [recurringDayOfWeek, setRecurringDayOfWeek] = useState(2); // שלישי
   const [recurringEndDate, setRecurringEndDate] = useState<string>('');
   const [rangeEndDate, setRangeEndDate] = useState<string>('');
-  const [rangeShiftMode, setRangeShiftMode] = useState<'day' | 'night' | 'both'>('day');
+  const [rangeShiftMode, setRangeShiftMode] = useState<
+    'day' | 'night' | 'both'
+  >('day');
 
   // טעינה רק בכניסה ראשונה (אין cache) – מנהל מקבל אילוצים של כולם עם שמות
   useEffect(() => {
@@ -318,19 +331,17 @@ export default function ConstraintsPage() {
   );
 
   const inputClass =
-    'cursor-pointer w-full min-h-[38px] min-w-0 rounded-xl border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:[color-scheme:dark] [color-scheme:light]';
+    'w-full min-h-[40px] min-w-0 rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
   const dateInputClass =
-    'cursor-pointer w-full min-h-[44px] min-w-0 rounded-xl border border-zinc-300 bg-white px-3 py-2 pe-9 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
-  const dateInputClassCompact =
-    'cursor-pointer w-full min-h-[38px] min-w-0 rounded-lg border border-zinc-300 bg-white px-2 py-1.5 pe-8 text-xs text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark] sm:min-h-[44px] sm:rounded-xl sm:px-3 sm:py-2 sm:pe-9 sm:text-sm';
+    'w-full min-h-[40px] min-w-0 rounded-xl border border-zinc-200/80 bg-white px-3 py-2 pe-9 text-sm text-zinc-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700/80 dark:bg-zinc-900/60 dark:text-zinc-50 [color-scheme:light] dark:[color-scheme:dark]';
   const labelClass =
-    'block text-xs font-medium text-zinc-700 dark:text-zinc-300';
+    'block text-xs font-medium text-zinc-600 dark:text-zinc-400';
 
   return (
-    <div className="relative space-y-6">
+    <div className="animate-fade-in relative space-y-5">
       {loading && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60">
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200/80 bg-white p-5 shadow-lg dark:border-zinc-700/80 dark:bg-zinc-900/80">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               טוען נתונים...
@@ -345,7 +356,7 @@ export default function ConstraintsPage() {
           aria-modal="true"
           aria-labelledby="delete-choice-title"
         >
-          <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="w-full max-w-sm rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xl dark:border-zinc-700/80 dark:bg-zinc-900/80">
             <h2
               id="delete-choice-title"
               className="mb-2 text-base font-semibold text-zinc-900 dark:text-zinc-50"
@@ -366,7 +377,7 @@ export default function ConstraintsPage() {
                   setDeleteChoiceConstraint(null);
                 }}
                 disabled={deletingId === deleteChoiceConstraint.id}
-                className="cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                className="cursor-pointer rounded-xl border border-zinc-200/80 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700/80 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
               >
                 מחיקה חד-פעמית (רק תאריך זה)
               </button>
@@ -392,24 +403,25 @@ export default function ConstraintsPage() {
           </div>
         </div>
       )}
-      <div>
-        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           אילוצים
         </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           סימון ימים בהם אינך זמין למשמרות יום או לילה.
         </p>
-      </div>
+      </header>
 
       <form
         onSubmit={handleCreate}
-        className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/80"
+        className="space-y-4 rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/60"
       >
-        <div className="flex flex-row flex-wrap items-center gap-3 pb-1 sm:gap-4 sm:pb-0">
-          <div className="space-y-1">
+        <div className="flex flex-row flex-wrap items-center gap-3 pb-1 sm:pb-0">
+          <div className="min-w-0 flex-1 space-y-1 sm:max-w-[180px]">
             <label className={labelClass}>סוג אילוץ</label>
             <Dropdown
               value={mode}
+              buttonClassName={DROPDOWN_BUTTON_CLASS}
               onSelect={(v) => {
                 const next = (v as ConstraintMode) ?? 'single';
                 setMode(next);
@@ -428,7 +440,7 @@ export default function ConstraintsPage() {
             />
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
           <div className="space-y-1">
             <label className={labelClass}>
               {mode === 'recurring' || mode === 'range'
@@ -452,6 +464,7 @@ export default function ConstraintsPage() {
                 <label className={labelClass}>יום בשבוע</label>
                 <Dropdown
                   value={String(recurringDayOfWeek)}
+                  buttonClassName={DROPDOWN_BUTTON_CLASS}
                   onSelect={(v) => setRecurringDayOfWeek(Number(v))}
                   items={DAY_NAMES_HE.map((name, i) => ({
                     value: String(i),
@@ -469,7 +482,7 @@ export default function ConstraintsPage() {
                   className={dateInputClass}
                   placeholder="אם ריק – שנה קדימה"
                 />
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   אם לא בוחרים: אילוץ עד שנה מההתחלה
                 </p>
               </div>
@@ -492,6 +505,7 @@ export default function ConstraintsPage() {
                 <label className={labelClass}>סוג משמרת</label>
                 <Dropdown
                   value={rangeShiftMode}
+                  buttonClassName={DROPDOWN_BUTTON_CLASS}
                   onSelect={(v) =>
                     setRangeShiftMode((v as 'day' | 'night' | 'both') ?? 'day')
                   }
@@ -509,6 +523,7 @@ export default function ConstraintsPage() {
               <label className={labelClass}>סוג משמרת</label>
               <Dropdown
                 value={form.type}
+                buttonClassName={DROPDOWN_BUTTON_CLASS}
                 onSelect={(v) =>
                   setForm((prev) => ({
                     ...prev,
@@ -526,6 +541,7 @@ export default function ConstraintsPage() {
             <label className={labelClass}>סטטוס</label>
             <Dropdown
               value={form.status}
+              buttonClassName={DROPDOWN_BUTTON_CLASS}
               onSelect={(v) =>
                 setForm((prev) => ({
                   ...prev,
@@ -563,8 +579,9 @@ export default function ConstraintsPage() {
           <button
             type="submit"
             disabled={isAdding}
-            className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-60"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:opacity-60"
           >
+            <PlusCircleIcon className="h-4 w-4" aria-hidden />
             {isAdding ? 'טוען...' : 'הוספת אילוץ'}
           </button>
         </div>
@@ -572,10 +589,12 @@ export default function ConstraintsPage() {
 
       <section className="space-y-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-            אילוצים (ברירת מחדל: השבוע הנוכחי)
-          </h2>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <SectionHeader
+            icon={<CalendarDaysIcon className="h-5 w-5" aria-hidden />}
+            title="אילוצים"
+            subtitle="ברירת מחדל: השבוע הנוכחי"
+          />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {filterOptions.length > 0 && (
               <div className="col-span-2 space-y-1 md:col-span-1">
                 <label className={labelClass}>פילטר לפי שם</label>
@@ -583,6 +602,7 @@ export default function ConstraintsPage() {
                   placeholder="הכל"
                   value={filterWorkerId}
                   onSelect={setFilterWorkerId}
+                  buttonClassName={DROPDOWN_BUTTON_CLASS}
                   items={[
                     { value: '', label: 'הכל' },
                     ...filterOptions.map((o) => ({
@@ -599,7 +619,7 @@ export default function ConstraintsPage() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className={dateInputClassCompact}
+                className={dateInputClass}
               />
             </div>
             <div className="min-w-0 space-y-1">
@@ -608,7 +628,7 @@ export default function ConstraintsPage() {
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className={dateInputClassCompact}
+                className={dateInputClass}
               />
             </div>
           </div>
@@ -618,49 +638,69 @@ export default function ConstraintsPage() {
             טוען אילוצים...
           </p>
         ) : filteredItems.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="rounded-xl border border-zinc-200/80 bg-white/50 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700/80 dark:bg-zinc-900/30 dark:text-zinc-400">
             אין אילוצים לתאריכים שנבחרו.
           </p>
         ) : (
-          <ul className="divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <ul className="max-h-[280px] divide-y divide-zinc-100 overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm dark:divide-zinc-800/80 dark:border-zinc-700/80 dark:bg-zinc-900/60">
             {filteredItems.map((c) => {
               const isOwner = profile?.id === c.worker_id;
               return (
                 <li
                   key={c.id}
-                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100"
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-zinc-900 transition-colors hover:bg-zinc-50/80 dark:text-zinc-100 dark:hover:bg-zinc-800/30"
                 >
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="font-medium">
-                      {formatDateHe(c.date)} ·{' '}
-                      {c.type === ShiftType.Day
-                        ? 'משמרת יום'
-                        : c.type === ShiftType.Night
-                          ? 'משמרת לילה'
-                          : 'כל היום'}
-                      {c.worker_name && (
-                        <span className="mr-2 text-zinc-500 dark:text-zinc-400">
-                          · {c.worker_name}
-                        </span>
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
+                      {c.type === ShiftType.Day ? (
+                        <SunIcon
+                          className="h-4 w-4 text-amber-500 dark:text-amber-400"
+                          aria-hidden
+                        />
+                      ) : c.type === ShiftType.Night ? (
+                        <MoonIcon
+                          className="h-4 w-4 text-indigo-500 dark:text-indigo-400"
+                          aria-hidden
+                        />
+                      ) : (
+                        <CalendarDaysIcon
+                          className="h-4 w-4 text-zinc-400"
+                          aria-hidden
+                        />
                       )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          c.status === ConstraintStatus.Unavailable
-                            ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-100'
-                        }`}
-                      >
-                        {c.status === ConstraintStatus.Unavailable
-                          ? 'לא זמין'
-                          : 'פנוי לכמה שעות'}
-                      </span>
-                      {c.note && (
-                        <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                          {c.note}
+                    </span>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="font-medium">
+                        {formatDateHe(c.date)} ·{' '}
+                        {c.type === ShiftType.Day
+                          ? 'משמרת יום'
+                          : c.type === ShiftType.Night
+                            ? 'משמרת לילה'
+                            : 'כל היום'}
+                        {c.worker_name && (
+                          <span className="mr-2 text-zinc-500 dark:text-zinc-400">
+                            · {c.worker_name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                            c.status === ConstraintStatus.Unavailable
+                              ? 'bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300'
+                              : 'bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                          }`}
+                        >
+                          {c.status === ConstraintStatus.Unavailable
+                            ? 'לא זמין'
+                            : 'פנוי לכמה שעות'}
                         </span>
-                      )}
+                        {c.note && (
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                            {c.note}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {isOwner && (
@@ -668,8 +708,9 @@ export default function ConstraintsPage() {
                       type="button"
                       onClick={() => handleDeleteClick(c)}
                       disabled={deletingId === c.id}
-                      className="shrink-0 cursor-pointer text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-60 dark:text-red-400"
+                      className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/10 hover:text-red-700 disabled:opacity-60 dark:text-red-400 dark:hover:bg-red-500/15"
                     >
+                      <TrashIcon className="h-3.5 w-3.5" aria-hidden />
                       {deletingId === c.id ? 'מסיר...' : 'מחיקה'}
                     </button>
                   )}
