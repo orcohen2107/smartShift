@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/20/solid';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { useTheme } from '@/components/ThemeProvider';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useProfile } from '@/features/profile/contexts/ProfileContext';
 import { canManage } from '@/lib/utils/enums';
 
 const baseLinks = [

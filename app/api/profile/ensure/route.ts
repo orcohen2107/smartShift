@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/db/supabaseServer';
-import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import { getAccessTokenFromRequest } from '@/lib/auth/authHeader';
-import type { Profile } from '@/lib/utils/interfaces';
+import { ensureProfile } from '@/features/profile/server/profile.service';
 
 export async function POST(req: Request) {
   const accessToken = getAccessTokenFromRequest(req);
@@ -14,166 +13,32 @@ export async function POST(req: Request) {
   }
 
   const supabase = getSupabaseServer({ accessToken });
-  const admin = getSupabaseAdmin();
-
   const { data: userData, error: userError } = await supabase.auth.getUser();
+
   if (userError || !userData?.user) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
   }
 
-  const userId = userData.user.id;
-  const email = userData.user.email ?? '';
-  const fullName =
-    (userData.user.user_metadata?.full_name as string)?.trim() || email;
-  const systemId = (userData.user.user_metadata?.system_id as string) || null;
-  const userType =
-    (userData.user.user_metadata?.user_type as string) || 'worker';
-  const isReserves =
-    userType === 'worker_reserves' ||
-    userData.user.user_metadata?.is_reserves === true;
+  const user = userData.user;
 
-  // Check if profile already exists.
-  const { data: existingProfile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 });
-  }
-
-  if (existingProfile) {
-    const profile = existingProfile as Profile & {
-      system_id?: string | null;
-      is_reserves?: boolean;
-    };
-    // רק worker מקבל שורת worker – commander/guest/manager לא
-    if (profile.role === 'worker') {
-      const { data: existingWorker } = await admin
-        .from('workers')
-        .select('id')
-        .eq('id', profile.id)
-        .maybeSingle();
-      if (!existingWorker) {
-        const { error: workerInsertErr } = await supabase
-          .from('workers')
-          .insert({
-            id: profile.id,
-            full_name: profile.full_name,
-            email: profile.email,
-            user_id: profile.id,
-            system_id: profile.system_id ?? null,
-            is_reserves: profile.is_reserves ?? false,
-          });
-        if (workerInsertErr) {
-          return NextResponse.json(
-            { error: `Worker creation failed: ${workerInsertErr.message}` },
-            { status: 500 }
-          );
-        }
-      }
-    }
+  try {
+    const profile = await ensureProfile({
+      supabase,
+      userId: user.id,
+      email: user.email ?? '',
+      fullName:
+        (user.user_metadata?.full_name as string)?.trim() || user.email || '',
+      systemId: (user.user_metadata?.system_id as string) || null,
+      userType: (user.user_metadata?.user_type as string) || 'worker',
+      isReserves:
+        user.user_metadata?.user_type === 'worker_reserves' ||
+        user.user_metadata?.is_reserves === true,
+    });
     return NextResponse.json({ profile });
-  }
-
-  // Determine role: first profile = manager, others from user_type (worker/guest).
-  const { count, error: countError } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
-
-  if (countError) {
-    return NextResponse.json({ error: countError.message }, { status: 500 });
-  }
-
-  const role =
-    !count || count === 0
-      ? 'manager'
-      : userType === 'guest'
-        ? 'guest'
-        : 'worker';
-
-  // מערכת: מ-metadata או ברירת מחדל (ראשית)
-  let finalSystemId = systemId;
-  if (!finalSystemId) {
-    const { data: firstSystem } = await supabase
-      .from('systems')
-      .select('id')
-      .limit(1)
-      .single();
-    finalSystemId = firstSystem?.id ?? null;
-  }
-
-  const { data: inserted, error: insertError } = await supabase
-    .from('profiles')
-    .insert({
-      id: userId,
-      full_name: fullName,
-      email: email || null,
-      role,
-      system_id: finalSystemId,
-      is_reserves: isReserves,
-    })
-    .select('*')
-    .single();
-
-  if (insertError || !inserted) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: insertError?.message ?? 'Failed to create profile' },
+      { error: err instanceof Error ? err.message : 'Internal error' },
       { status: 500 }
     );
   }
-
-  const profileSystemId =
-    (inserted as { system_id?: string | null })?.system_id ?? null;
-
-  // קישור worker קיים (שנוסף ידנית) לפי שם דומה ומערכת – מעדכן אימייל ו-user_id
-  let toLinkQuery = admin
-    .from('workers')
-    .select('id')
-    .is('user_id', null)
-    .ilike('full_name', fullName.trim())
-    .limit(1);
-  if (profileSystemId) {
-    toLinkQuery = toLinkQuery.eq('system_id', profileSystemId);
-  }
-  const { data: unlinkedWorkers } = await toLinkQuery;
-
-  // רק role=worker מקבל שורת worker – commander/guest/manager לא
-  if (role === 'worker') {
-    const toLink = unlinkedWorkers?.[0];
-    if (toLink?.id) {
-      const { error: updateErr } = await supabase
-        .from('workers')
-        .update({
-          user_id: userId,
-          email: email || null,
-          is_reserves: isReserves,
-        })
-        .eq('id', toLink.id);
-      if (updateErr) {
-        return NextResponse.json(
-          { error: `Worker link failed: ${updateErr.message}` },
-          { status: 500 }
-        );
-      }
-    } else {
-      const { error: workerInsertErr } = await supabase.from('workers').insert({
-        id: userId,
-        full_name: fullName,
-        email: email ?? null,
-        user_id: userId,
-        system_id: profileSystemId,
-        is_reserves: isReserves,
-      });
-      if (workerInsertErr) {
-        return NextResponse.json(
-          { error: `Worker creation failed: ${workerInsertErr.message}` },
-          { status: 500 }
-        );
-      }
-    }
-  }
-
-  return NextResponse.json({ profile: inserted as Profile });
 }

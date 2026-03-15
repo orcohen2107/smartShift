@@ -12,8 +12,8 @@ import {
   CalendarIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/react/20/solid';
-import { useAssignments } from '@/contexts/AssignmentsContext';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useAssignments } from '@/features/assignments/contexts/AssignmentsContext';
+import { useProfile } from '@/features/profile/contexts/ProfileContext';
 import Dropdown from '@/components/Dropdown';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { type ShiftStatus } from '@/components/dashboard/ShiftBlock';

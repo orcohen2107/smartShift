@@ -10,10 +10,11 @@ import {
 } from 'react';
 import { apiFetch } from '@/lib/api/apiFetch';
 import type { Constraint } from '@/lib/utils/interfaces';
+import type { SystemMember } from '@/features/constraints/types';
 
 type LoadOptions = { all?: boolean };
 
-export type SystemMember = { id: string; full_name: string | null };
+export type { SystemMember };
 
 type ConstraintsContextValue = {
   constraints: Constraint[];
