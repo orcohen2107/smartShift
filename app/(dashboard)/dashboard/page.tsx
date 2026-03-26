@@ -216,7 +216,7 @@ export default function DashboardPage() {
     return 'empty';
   }
 
-  if (loading) {
+  if (loading || (!error && !hasCachedData && overview === null)) {
     return (
       <div className="flex min-h-[320px] items-center justify-center">
         <div className="flex flex-col items-center gap-4">

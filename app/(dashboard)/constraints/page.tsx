@@ -57,6 +57,8 @@ export default function ConstraintsPage() {
     useState<Constraint | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const blockingLoading = !error && (loading || (!hasCachedData && items.length === 0));
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -311,7 +313,7 @@ export default function ConstraintsPage() {
 
   return (
     <div className="animate-fade-in relative min-w-0 space-y-5">
-      {loading && (
+      {blockingLoading && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60">
           <div className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200/80 bg-white p-5 shadow-lg dark:border-zinc-700/80 dark:bg-zinc-900/80">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
@@ -565,7 +567,7 @@ export default function ConstraintsPage() {
             </div>
           </div>
         </div>
-        {loading ? (
+        {blockingLoading ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             טוען אילוצים...
           </p>
