@@ -35,9 +35,9 @@ export async function POST(req: Request) {
         user.user_metadata?.is_reserves === true,
     });
     return NextResponse.json({ profile });
-  } catch (err: unknown) {
+  } catch {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

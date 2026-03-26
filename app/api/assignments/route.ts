@@ -5,9 +5,10 @@ import {
   getAssignmentsOverview,
   createAssignment,
   deleteAssignment,
-  ServiceError,
 } from '@/features/assignments/server/assignments.service';
-import type { AssignmentPostBody } from '@/lib/utils/interfaces';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
+import { parseBody, parseUuidParam } from '@/lib/utils/schemas/parseBody';
+import { assignmentPostSchema } from '@/lib/utils/schemas/assignments';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -27,8 +28,8 @@ export async function GET(req: Request) {
     return NextResponse.json(overview);
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }
@@ -39,28 +40,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const body = (await req.json()) as AssignmentPostBody;
-
-  if (!body.shift_id || !body.worker_id) {
-    return NextResponse.json(
-      { error: 'Missing shift_id or worker_id' },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(req, assignmentPostSchema);
+  if (!parsed.ok) return parsed.response;
 
   try {
     const assignment = await createAssignment({
-      shiftId: body.shift_id,
-      workerId: body.worker_id,
+      shiftId: parsed.data.shift_id,
+      workerId: parsed.data.worker_id,
       systemId: res.profile.system_id,
       supabase: res.supabase,
     });
     return NextResponse.json(assignment, { status: 201 });
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }
@@ -72,22 +66,22 @@ export async function DELETE(req: Request) {
   }
 
   const url = new URL(req.url);
-  const assignmentId = url.searchParams.get('assignment_id');
+  const assignmentId = parseUuidParam(url.searchParams.get('assignment_id'));
 
   if (!assignmentId) {
     return NextResponse.json(
-      { error: 'Missing assignment_id' },
+      { error: 'Missing or invalid assignment_id' },
       { status: 400 }
     );
   }
 
   try {
-    await deleteAssignment(assignmentId);
+    await deleteAssignment(assignmentId, res.profile.system_id);
     return new Response(null, { status: 204 });
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }

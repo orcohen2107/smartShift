@@ -1,4 +1,9 @@
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import {
+  assertShiftOwnership,
+  assertAssignmentOwnership,
+} from '@/lib/auth/assertOwnership';
+import { ServiceError } from '@/lib/utils/errors';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Assignment,
@@ -85,16 +90,16 @@ export async function createAssignment(params: {
 }): Promise<Assignment> {
   const { shiftId, workerId, systemId, supabase } = params;
 
-  if (systemId) {
-    const { data: worker } = await supabase
-      .from('workers')
-      .select('id')
-      .eq('id', workerId)
-      .eq('system_id', systemId)
-      .single();
-    if (!worker) {
-      throw new ServiceError('Worker not in your system', 403);
-    }
+  await assertShiftOwnership(shiftId, systemId);
+
+  const { data: worker } = await supabase
+    .from('workers')
+    .select('id')
+    .eq('id', workerId)
+    .eq('system_id', systemId ?? '')
+    .single();
+  if (!worker) {
+    throw new ServiceError('Worker not in your system', 403);
   }
 
   const admin = getSupabaseAdmin();
@@ -111,7 +116,12 @@ export async function createAssignment(params: {
   return data as Assignment;
 }
 
-export async function deleteAssignment(assignmentId: string): Promise<void> {
+export async function deleteAssignment(
+  assignmentId: string,
+  systemId: string | null
+): Promise<void> {
+  await assertAssignmentOwnership(assignmentId, systemId);
+
   const admin = getSupabaseAdmin();
   const { error } = await admin
     .from('assignments')
@@ -119,19 +129,11 @@ export async function deleteAssignment(assignmentId: string): Promise<void> {
     .eq('id', assignmentId);
 
   if (error) {
-    console.error('[DELETE /api/assignments]', error);
     throw new Error(error.message ?? 'Failed to delete assignment');
   }
 }
 
-export class ServiceError extends Error {
-  constructor(
-    message: string,
-    public status: number = 500
-  ) {
-    super(message);
-  }
-}
+export { ServiceError } from '@/lib/utils/errors';
 
 // ── internal helpers ──
 

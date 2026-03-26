@@ -1,26 +1,25 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
-import type { SignupBody, SignupUserType } from '@/lib/utils/interfaces';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { signupSchema } from '@/lib/utils/schemas/auth';
+import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 5 });
+  if (limited) return limited;
+
+  const parsed = await parseBody(req, signupSchema);
+  if (!parsed.ok) return parsed.response;
+
   const {
     email,
     password,
     full_name,
     system_id,
-    is_reserves,
     user_type = 'worker',
-  } = (await req.json()) as SignupBody;
+  } = parsed.data;
 
-  if (!email || !password) {
-    return NextResponse.json(
-      { error: 'Email and password are required' },
-      { status: 400 }
-    );
-  }
-
-  const validTypes: SignupUserType[] = ['worker', 'worker_reserves', 'guest'];
-  const ut = validTypes.includes(user_type) ? user_type : 'worker';
+  const ut = user_type ?? 'worker';
 
   const supabase = getSupabaseAdmin();
   const metadata: Record<string, unknown> = {};
@@ -38,7 +37,10 @@ export async function POST(req: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const safeMsg = error.message?.includes('already registered')
+      ? 'A user with this email already exists'
+      : 'Signup failed';
+    return NextResponse.json({ error: safeMsg }, { status: 400 });
   }
 
   return NextResponse.json({

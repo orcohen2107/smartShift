@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { assertBoardOwnership } from '@/lib/auth/assertOwnership';
 import { computeAutofillProposals, addDays } from '@/lib/assignments/autofill';
 import { getDatesInRange } from '@/features/assignments/utils';
 import type {
@@ -12,6 +13,9 @@ export async function previewAutofill(params: {
   systemId: string | null;
 }): Promise<{ proposed: AutofillProposalItem[] }> {
   const { body, systemId } = params;
+
+  await assertBoardOwnership(body.board_id, systemId);
+
   const admin = getSupabaseAdmin();
 
   const fromDate = body.from_date;
@@ -198,14 +202,17 @@ export async function previewAutofill(params: {
 export async function applyAutofill(params: {
   body: AutofillApplyBody;
   profileId: string;
+  systemId: string | null;
 }): Promise<{
   created: number;
   removed: number;
   assignments: Array<{ id: string; shift_id: string; worker_id: string }>;
 }> {
-  const { body, profileId } = params;
+  const { body, profileId, systemId } = params;
   const additions = body.additions ?? body.assignments ?? [];
   const removals = body.removals ?? [];
+
+  await assertBoardOwnership(body.board_id, systemId);
 
   const admin = getSupabaseAdmin();
 

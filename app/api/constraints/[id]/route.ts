@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/requireUser';
 import { Role } from '@/lib/utils/enums';
-import type { ConstraintPatchBody } from '@/lib/utils/interfaces';
+import { parseBody, parseUuidParam } from '@/lib/utils/schemas/parseBody';
+import { constraintPatchSchema } from '@/lib/utils/schemas/constraints';
 import {
   updateConstraint,
   deleteConstraint,
-  ServiceError,
 } from '@/features/constraints/server/constraints.service';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
 
 export async function PATCH(
   req: Request,
@@ -25,21 +26,29 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = (await req.json()) as ConstraintPatchBody;
+
+  if (!parseUuidParam(id)) {
+    return NextResponse.json(
+      { error: 'Invalid constraint id' },
+      { status: 400 }
+    );
+  }
+
+  const parsed = await parseBody(req, constraintPatchSchema);
+  if (!parsed.ok) return parsed.response;
 
   try {
     const updated = await updateConstraint({
       supabase: res.supabase,
       profileId: res.profile.id,
       constraintId: id,
-      body,
+      body: parsed.data,
     });
     return NextResponse.json(updated);
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }
@@ -61,6 +70,14 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  if (!parseUuidParam(id)) {
+    return NextResponse.json(
+      { error: 'Invalid constraint id' },
+      { status: 400 }
+    );
+  }
+
   const url = new URL(req.url);
 
   try {
@@ -72,10 +89,9 @@ export async function DELETE(
     });
     return new Response(null, { status: 204 });
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }

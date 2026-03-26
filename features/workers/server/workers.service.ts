@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { ServiceError } from '@/lib/utils/errors';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Worker } from '@/lib/utils/interfaces';
 
@@ -95,13 +96,4 @@ export async function deleteWorker(params: {
   }
 }
 
-// ── ServiceError ──
-
-export class ServiceError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'ServiceError';
-    this.status = status;
-  }
-}
+export { ServiceError } from '@/lib/utils/errors';

@@ -11,9 +11,9 @@ export async function GET(req: Request) {
   try {
     const profiles = await listProfiles(res.profile.system_id);
     return NextResponse.json({ profiles });
-  } catch (err: unknown) {
+  } catch {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { assertProfileInSystem } from '@/lib/auth/assertOwnership';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile } from '@/lib/utils/interfaces';
 
@@ -234,8 +235,12 @@ export async function listProfiles(
 export async function promoteProfile(params: {
   profileId: string;
   role: 'manager' | 'commander';
+  managerSystemId: string | null;
 }): Promise<Profile> {
-  const { profileId, role } = params;
+  const { profileId, role, managerSystemId } = params;
+
+  await assertProfileInSystem(profileId, managerSystemId);
+
   const admin = getSupabaseAdmin();
 
   const { data: profile, error: updateError } = await admin

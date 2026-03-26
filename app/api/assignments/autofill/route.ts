@@ -1,26 +1,31 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
-
-type AutofillBody = {
-  board_id: string;
-  from_date: string; // yyyy-mm-dd
-  to_date: string; // yyyy-mm-dd
-};
+import { assertBoardOwnership } from '@/lib/auth/assertOwnership';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { autofillBodySchema } from '@/lib/utils/schemas/assignments';
+import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
+  if (limited) return limited;
+
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
   const { profile } = res;
-  const body = (await req.json()) as AutofillBody;
+  const parsed = await parseBody(req, autofillBodySchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.board_id || !body.from_date || !body.to_date) {
+  try {
+    await assertBoardOwnership(body.board_id, profile.system_id);
+  } catch {
     return NextResponse.json(
-      { error: 'Missing board_id, from_date or to_date' },
-      { status: 400 }
+      { error: 'You do not have permission to access this board' },
+      { status: 403 }
     );
   }
 
@@ -37,7 +42,7 @@ export async function POST(req: Request) {
 
   if (shiftsErr || !shifts) {
     return NextResponse.json(
-      { error: shiftsErr?.message ?? 'Failed to fetch shifts' },
+      { error: 'Failed to fetch shifts' },
       { status: 500 }
     );
   }
@@ -54,7 +59,10 @@ export async function POST(req: Request) {
     );
 
   if (assignErr) {
-    return NextResponse.json({ error: assignErr.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch assignments' },
+      { status: 500 }
+    );
   }
 
   const assignmentsList = assignments ?? [];
@@ -73,7 +81,7 @@ export async function POST(req: Request) {
 
   if (workersErr || !workers) {
     return NextResponse.json(
-      { error: workersErr?.message ?? 'Failed to fetch workers' },
+      { error: 'Failed to fetch workers' },
       { status: 500 }
     );
   }
@@ -107,7 +115,7 @@ export async function POST(req: Request) {
 
   if (constraintsErr) {
     return NextResponse.json(
-      { error: constraintsErr.message },
+      { error: 'Failed to fetch constraints' },
       { status: 500 }
     );
   }

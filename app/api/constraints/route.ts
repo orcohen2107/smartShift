@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/requireUser';
 import { Role } from '@/lib/utils/enums';
-import type { ConstraintPostBody } from '@/lib/utils/interfaces';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { constraintPostSchema } from '@/lib/utils/schemas/constraints';
 import {
   getConstraints,
   createConstraint,
-  ServiceError,
 } from '@/features/constraints/server/constraints.service';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
 
 export async function GET(req: Request) {
   const res = await requireUser(req);
@@ -24,10 +25,9 @@ export async function GET(req: Request) {
     });
     return NextResponse.json(payload);
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }
@@ -45,13 +45,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const body = (await req.json()) as ConstraintPostBody;
+  const parsed = await parseBody(req, constraintPostSchema);
+  if (!parsed.ok) return parsed.response;
 
   try {
     const result = await createConstraint({
       supabase: res.supabase,
       profile: res.profile,
-      body,
+      body: parsed.data,
     });
 
     if (result.single) {
@@ -59,10 +60,9 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ created: result.created }, { status: 201 });
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }

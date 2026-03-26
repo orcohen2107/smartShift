@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
+import { ServiceError } from '@/lib/utils/errors';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Constraint,
@@ -358,11 +359,4 @@ export async function deleteConstraint(params: {
   }
 }
 
-export class ServiceError extends Error {
-  constructor(
-    message: string,
-    public status: number = 500
-  ) {
-    super(message);
-  }
-}
+export { ServiceError } from '@/lib/utils/errors';

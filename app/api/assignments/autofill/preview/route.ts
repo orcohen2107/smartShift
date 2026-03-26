@@ -1,33 +1,33 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
 import { previewAutofill } from '@/features/assignments/server/autofill.service';
-import type { AutofillPreviewBody } from '@/features/assignments/types';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { autofillBodySchema } from '@/lib/utils/schemas/assignments';
+import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
+  if (limited) return limited;
+
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const body = (await req.json()) as AutofillPreviewBody;
-
-  if (!body.board_id || !body.from_date || !body.to_date) {
-    return NextResponse.json(
-      { error: 'Missing board_id, from_date or to_date' },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseBody(req, autofillBodySchema);
+  if (!parsed.ok) return parsed.response;
 
   try {
     const result = await previewAutofill({
-      body,
+      body: parsed.data,
       systemId: res.profile.system_id,
     });
     return NextResponse.json(result);
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }

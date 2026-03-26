@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
-import {
-  deleteWorker,
-  ServiceError,
-} from '@/features/workers/server/workers.service';
+import { parseUuidParam } from '@/lib/utils/schemas/parseBody';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
+import { deleteWorker } from '@/features/workers/server/workers.service';
 
 export async function DELETE(
   req: Request,
@@ -16,6 +15,10 @@ export async function DELETE(
 
   const { id } = await params;
 
+  if (!parseUuidParam(id)) {
+    return NextResponse.json({ error: 'Invalid worker id' }, { status: 400 });
+  }
+
   try {
     await deleteWorker({
       supabase: res.supabase,
@@ -24,10 +27,9 @@ export async function DELETE(
     });
     return new Response(null, { status: 204 });
   } catch (err: unknown) {
-    const status = err instanceof ServiceError ? err.status : 500;
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }

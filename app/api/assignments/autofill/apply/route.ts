@@ -1,27 +1,30 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
 import { applyAutofill } from '@/features/assignments/server/autofill.service';
-import type { AutofillApplyBody } from '@/features/assignments/types';
+import { safeErrorMessage, safeErrorStatus } from '@/lib/utils/errors';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { autofillApplySchema } from '@/lib/utils/schemas/assignments';
+import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
+  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
+  if (limited) return limited;
+
   const res = await requireManager(req);
   if (!res.ok) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const body = (await req.json()) as AutofillApplyBody;
+  const parsed = await parseBody(req, autofillApplySchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const additions = body.additions ?? body.assignments ?? [];
   const removals = body.removals ?? [];
 
-  if (
-    !body.board_id ||
-    !body.from_date ||
-    !body.to_date ||
-    (additions.length === 0 && removals.length === 0)
-  ) {
+  if (additions.length === 0 && removals.length === 0) {
     return NextResponse.json(
-      { error: 'Missing board_id, from_date, to_date or assignments' },
+      { error: 'At least one addition or removal is required' },
       { status: 400 }
     );
   }
@@ -30,12 +33,13 @@ export async function POST(req: Request) {
     const result = await applyAutofill({
       body,
       profileId: res.profile.id,
+      systemId: res.profile.system_id,
     });
     return NextResponse.json(result);
   } catch (err: unknown) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
+      { error: safeErrorMessage(err) },
+      { status: safeErrorStatus(err) }
     );
   }
 }
