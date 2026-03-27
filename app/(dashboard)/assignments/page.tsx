@@ -1,29 +1,44 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BoltIcon, TrashIcon } from '@heroicons/react/20/solid';
 import { apiFetch } from '@/lib/api/apiFetch';
-import { useAssignments } from '@/contexts/AssignmentsContext';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useAssignments } from '@/features/assignments/contexts/AssignmentsContext';
+import { useProfile } from '@/features/profile/contexts/ProfileContext';
 import type {
   Assignment,
   Constraint,
   Shift,
-  ShiftBoard,
   Worker,
 } from '@/lib/utils/interfaces';
-import { canManage, ConstraintStatus, ShiftType } from '@/lib/utils/enums';
-import Checkbox from '@/components/Checkbox';
+import { canManage, ShiftType } from '@/lib/utils/enums';
 import Dropdown from '@/components/Dropdown';
 import { ShiftDetailsDrawer } from '@/components/assignments/ShiftDetailsDrawer';
 import { WorkerDetailsDrawer } from '@/components/assignments/WorkerDetailsDrawer';
-
-type CreateShiftInput = {
-  date: string;
-  type: ShiftType;
-  required_count?: number;
-};
+import type {
+  CreateShiftInput,
+  AssigningCell,
+  PendingConstraintConfirm,
+  ShiftDrawerState,
+} from '@/features/assignments/types';
+import {
+  getWeekDates,
+  formatDateHe,
+  getDayName,
+  isDatePast,
+  isToday,
+  workerDisplayName,
+  getWorkerInitials,
+  getWorkerAvatarColor,
+} from '@/features/assignments/utils';
+import { useWeekNavigation } from '@/features/assignments/hooks/useWeekNavigation';
+import { useAutofill } from '@/features/assignments/hooks/useAutofill';
+import { CreateBoardModal } from '@/features/assignments/components/CreateBoardModal';
+import { ConstraintConfirmModal } from '@/features/assignments/components/ConstraintConfirmModal';
+import { AssignWorkerModal } from '@/features/assignments/components/AssignWorkerModal';
+import { AutofillPreviewModal } from '@/features/assignments/components/AutofillPreviewModal';
+import { ShiftListView } from '@/features/assignments/components/ShiftListView';
 
 export default function AssignmentsPage() {
   const router = useRouter();
@@ -55,55 +70,17 @@ export default function AssignmentsPage() {
   const [addingWorker, setAddingWorker] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
-  const [newBoardWorkersPerShift, setNewBoardWorkersPerShift] = useState(1);
-  const [newBoardSinglePerson, setNewBoardSinglePerson] = useState(false);
-  const [creatingBoard, setCreatingBoard] = useState(false);
-  const [assigningCell, setAssigningCell] = useState<{
-    date: string;
-    type: ShiftType;
-    shiftId: string | null;
-  } | null>(null);
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [assigningCell, setAssigningCell] = useState<AssigningCell | null>(
+    null
+  );
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
   const [creatingShift, setCreatingShift] = useState(false);
   const [assigningCellKey, setAssigningCellKey] = useState<string | null>(null);
-  const [pendingConstraintConfirm, setPendingConstraintConfirm] = useState<{
-    shiftId: string;
-    workerId: string;
-    workerName: string;
-  } | null>(null);
-  const [assigningFromConstraintModal, setAssigningFromConstraintModal] =
-    useState(false);
-  const [autofillLoading, setAutofillLoading] = useState(false);
-  const [autofillSuccess, setAutofillSuccess] = useState<string | null>(null);
-  const [autofillPreview, setAutofillPreview] = useState<Array<{
-    date: string;
-    type: string;
-    worker_id: string;
-    worker_name: string;
-  }> | null>(null);
-  const [autofillApplying, setAutofillApplying] = useState(false);
-  const [editingProposal, setEditingProposal] = useState<{
-    date: string;
-    type: string;
-    worker_id: string;
-  } | null>(null);
-  const [replacementEdits, setReplacementEdits] = useState<
-    Array<{
-      date: string;
-      type: string;
-      from_worker_id: string;
-      to_worker_id: string;
-      to_worker_name: string;
-    }>
-  >([]);
-  const [shiftDrawer, setShiftDrawer] = useState<{
-    date: string;
-    cellType: ShiftType;
-    shift: Shift | null;
-    assigns: Assignment[];
-  } | null>(null);
+  const [pendingConstraintConfirm, setPendingConstraintConfirm] =
+    useState<PendingConstraintConfirm | null>(null);
+  const [shiftDrawer, setShiftDrawer] = useState<ShiftDrawerState | null>(
+    null
+  );
   const [workerDrawer, setWorkerDrawer] = useState<Worker | null>(null);
 
   useEffect(() => {
@@ -139,27 +116,6 @@ export default function AssignmentsPage() {
     return map;
   }, [overview]);
 
-  const assignmentCountByWorkerThisWeek: Record<string, number> =
-    useMemo(() => {
-      const counts: Record<string, number> = {};
-      const assignments = overview?.assignments ?? [];
-      const datesInWeek = new Set(getWeekDates(weekOffset));
-      let shiftsInScope = (overview?.shifts ?? []).filter((s) =>
-        datesInWeek.has(s.date)
-      );
-      if (selectedBoardId) {
-        shiftsInScope = shiftsInScope.filter(
-          (s) => s.board_id === selectedBoardId
-        );
-      }
-      const shiftIdsInWeek = new Set(shiftsInScope.map((s) => s.id));
-      assignments.forEach((a) => {
-        if (!shiftIdsInWeek.has(a.shift_id)) return;
-        counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
-      });
-      return counts;
-    }, [overview?.assignments, overview?.shifts, weekOffset, selectedBoardId]);
-
   /** כוננים לא-מילואים לפי א-ב, ואז מילואים לפי א-ב */
   const workersSorted = useMemo(() => {
     const list = [...(overview?.workers ?? [])];
@@ -169,51 +125,6 @@ export default function AssignmentsPage() {
       return name(a).localeCompare(name(b), 'he');
     });
   }, [overview?.workers]);
-
-  const workerDisplayName = (w: Worker | undefined) =>
-    w
-      ? `${w.full_name ?? w.email ?? w.id ?? '—'}${w.is_reserves ? ' (מילואים)' : ''}`
-      : '—';
-
-  const AVATAR_COLORS = [
-    'bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-300',
-    'bg-indigo-500/20 text-indigo-700 dark:bg-indigo-500/25 dark:text-indigo-300',
-    'bg-amber-500/20 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300',
-    'bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-300',
-    'bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-300',
-  ];
-
-  const WORKER_AVATAR_OVERRIDES: Record<string, string> = {
-    'אור כהן':
-      'bg-red-500/20 text-red-700 dark:bg-red-500/25 dark:text-red-300',
-  };
-
-  function getWorkerInitials(w: Worker | undefined): string {
-    if (!w) return '—';
-    const name = (w.full_name ?? w.email ?? '').trim();
-    if (!name) return (w.id ?? '?').slice(0, 2).toUpperCase();
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return (
-        (parts[0]!.charAt(0) ?? '') + (parts[parts.length - 1]!.charAt(0) ?? '')
-      );
-    }
-    return name.slice(0, 2);
-  }
-
-  function getWorkerAvatarColor(workerId: string, worker?: Worker): string {
-    const name = worker
-      ? workerDisplayName(worker)
-          .replace(/\s*\(מילואים\)$/, '')
-          .trim()
-      : '';
-    if (name && WORKER_AVATAR_OVERRIDES[name])
-      return WORKER_AVATAR_OVERRIDES[name]!;
-    let h = 0;
-    for (let i = 0; i < workerId.length; i++)
-      h = (h << 5) - h + workerId.charCodeAt(i);
-    return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]!;
-  }
 
   const constraintsByWorkerDateType: Record<string, Constraint[]> =
     useMemo(() => {
@@ -243,53 +154,61 @@ export default function AssignmentsPage() {
     return constraints.some((c) => c.type === shiftType);
   }
 
-  function hasUnavailableConstraint(
-    profileId: string | null,
-    date: string,
-    shiftType: ShiftType
-  ) {
-    if (!profileId) return false;
-    const key = `${profileId}-${date}-${shiftType}`;
-    return (constraintsByWorkerDateType[key] ?? []).some(
-      (c) => c.status === ConstraintStatus.Unavailable
-    );
-  }
-
   const selectedBoard = useMemo(
     () => overview?.boards?.find((b) => b.id === selectedBoardId) ?? null,
     [overview?.boards, selectedBoardId]
   );
 
-  async function handleCreateBoard(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newBoardName.trim()) return;
-    setError(null);
-    setCreatingBoard(true);
-    try {
-      const board = await apiFetch<ShiftBoard>('/api/boards', {
-        method: 'POST',
-        json: {
-          name: newBoardName.trim(),
-          workers_per_shift: newBoardWorkersPerShift,
-          single_person_for_day: newBoardSinglePerson,
-        },
+  const {
+    weekOffset,
+    setWeekOffset,
+    weekDates,
+    assignmentsInWeek,
+    constraintsInWeek,
+    weeklyProgress,
+  } = useWeekNavigation({ overview, selectedBoardId, selectedBoard });
+
+  const {
+    autofillLoading,
+    autofillSuccess,
+    autofillPreview,
+    autofillApplying,
+    editingProposal,
+    setEditingProposal,
+    replacementEdits,
+    handleAutofill,
+    handleAutofillConfirm,
+    handleAutofillCancel,
+    handleReplaceProposal,
+  } = useAutofill({
+    selectedBoardId,
+    weekDates,
+    setError,
+    updateOverview,
+    load,
+    workersById,
+  });
+
+  const assignmentCountByWorkerThisWeek: Record<string, number> =
+    useMemo(() => {
+      const counts: Record<string, number> = {};
+      const assignments = overview?.assignments ?? [];
+      const datesInWeek = new Set(getWeekDates(weekOffset));
+      let shiftsInScope = (overview?.shifts ?? []).filter((s) =>
+        datesInWeek.has(s.date)
+      );
+      if (selectedBoardId) {
+        shiftsInScope = shiftsInScope.filter(
+          (s) => s.board_id === selectedBoardId
+        );
+      }
+      const shiftIdsInWeek = new Set(shiftsInScope.map((s) => s.id));
+      assignments.forEach((a) => {
+        if (!shiftIdsInWeek.has(a.shift_id)) return;
+        counts[a.worker_id] = (counts[a.worker_id] ?? 0) + 1;
       });
-      setNewBoardName('');
-      setNewBoardWorkersPerShift(1);
-      setNewBoardSinglePerson(false);
-      setShowCreateBoard(false);
-      setSelectedBoardId(board.id);
-      updateOverview((prev) => ({
-        ...prev,
-        boards: [...prev.boards, board],
-      }));
-    } catch (err: unknown) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Failed to create board');
-    } finally {
-      setCreatingBoard(false);
-    }
-  }
+      return counts;
+    }, [overview?.assignments, overview?.shifts, weekOffset, selectedBoardId]);
 
   async function handleCreateShift(e: React.FormEvent) {
     e.preventDefault();
@@ -507,63 +426,6 @@ export default function AssignmentsPage() {
     }
   }
 
-  function getWeekDates(offset: number): string[] {
-    const out: string[] = [];
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const start = new Date(today);
-    start.setDate(today.getDate() - dayOfWeek + offset * 7);
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      out.push(
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      );
-    }
-    return out;
-  }
-
-  const DAY_NAMES_HE = [
-    'ראשון',
-    'שני',
-    'שלישי',
-    'רביעי',
-    'חמישי',
-    'שישי',
-    'שבת',
-  ];
-
-  function formatDateHe(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-');
-    return `${d}.${m}.${y}`;
-  }
-
-  function getDayName(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return DAY_NAMES_HE[date.getDay()] ?? '';
-  }
-
-  function isDatePast(dateStr: string): boolean {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return date < today;
-  }
-
-  function isToday(dateStr: string): boolean {
-    const today = new Date();
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return (
-      today.getFullYear() === y &&
-      today.getMonth() === m - 1 &&
-      today.getDate() === d
-    );
-  }
-
-  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
-
   const shiftsById: Record<string, Shift> = useMemo(() => {
     const map: Record<string, Shift> = {};
     (overview?.shifts ?? []).forEach((s) => {
@@ -571,256 +433,6 @@ export default function AssignmentsPage() {
     });
     return map;
   }, [overview?.shifts]);
-
-  const datesInWeekSet = useMemo(() => new Set(weekDates), [weekDates]);
-  const shiftIdsInWeek = useMemo(() => {
-    const ids = new Set<string>();
-    (overview?.shifts ?? []).forEach((s) => {
-      if (
-        datesInWeekSet.has(s.date) &&
-        (!selectedBoardId || s.board_id === selectedBoardId)
-      ) {
-        ids.add(s.id);
-      }
-    });
-    return ids;
-  }, [overview?.shifts, datesInWeekSet, selectedBoardId]);
-  const assignmentsInWeek = useMemo(
-    () =>
-      (overview?.assignments ?? []).filter((a) =>
-        shiftIdsInWeek.has(a.shift_id)
-      ),
-    [overview?.assignments, shiftIdsInWeek]
-  );
-  const constraintsInWeek = useMemo(
-    () =>
-      (overview?.constraints ?? []).filter((c) => datesInWeekSet.has(c.date)),
-    [overview?.constraints, datesInWeekSet]
-  );
-
-  const weeklyProgress = useMemo(() => {
-    const datesSet = new Set(weekDates);
-    let shiftsInWeek = (overview?.shifts ?? []).filter((s) =>
-      datesSet.has(s.date)
-    );
-    if (selectedBoardId) {
-      shiftsInWeek = shiftsInWeek.filter((s) => s.board_id === selectedBoardId);
-    }
-    const shiftIdsInWeek = new Set(shiftsInWeek.map((s) => s.id));
-    const assignmentsInWeek = (overview?.assignments ?? []).filter((a) =>
-      shiftIdsInWeek.has(a.shift_id)
-    );
-    const isFullDay = selectedBoard?.single_person_for_day ?? false;
-    let daysFullyAssigned = 0;
-    for (const date of weekDates) {
-      const dayShifts = shiftsInWeek.filter((s) => s.date === date);
-      const relevantShifts = isFullDay
-        ? dayShifts.filter((s) => s.type === ShiftType.FullDay)
-        : dayShifts.filter(
-            (s) => s.type === ShiftType.Day || s.type === ShiftType.Night
-          );
-      if (relevantShifts.length === 0) continue;
-      const allFull = relevantShifts.every((s) => {
-        const count = assignmentsInWeek.filter(
-          (a) => a.shift_id === s.id
-        ).length;
-        return count >= (s.required_count ?? 1);
-      });
-      if (allFull) daysFullyAssigned += 1;
-    }
-    return { daysFullyAssigned, total: 7 };
-  }, [
-    weekDates,
-    selectedBoardId,
-    selectedBoard?.single_person_for_day,
-    overview?.shifts,
-    overview?.assignments,
-  ]);
-
-  const handleAutofill = useCallback(async () => {
-    if (!selectedBoardId || !weekDates.length) return;
-    setError(null);
-    setAutofillSuccess(null);
-    setAutofillPreview(null);
-    setAutofillLoading(true);
-    try {
-      const fromDate = weekDates[0]!;
-      const toDate = weekDates[6]!;
-      const res = await apiFetch<{
-        proposed: Array<{
-          date: string;
-          type: string;
-          worker_id: string;
-          worker_name: string;
-        }>;
-      }>('/api/assignments/autofill/preview', {
-        method: 'POST',
-        json: {
-          board_id: selectedBoardId,
-          from_date: fromDate,
-          to_date: toDate,
-        },
-      });
-      const proposed = res.proposed ?? [];
-      if (proposed.length > 0) {
-        setAutofillPreview(proposed);
-      } else {
-        setAutofillSuccess('אין משמרות ריקות לשיבוץ');
-        setTimeout(() => setAutofillSuccess(null), 3000);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'שגיאה בשיבוץ אוטומטי');
-    } finally {
-      setAutofillLoading(false);
-    }
-  }, [selectedBoardId, weekDates, setError]);
-
-  const handleAutofillConfirm = useCallback(async () => {
-    const hasProposed = (autofillPreview?.length ?? 0) > 0;
-    const hasReplacements = replacementEdits.length > 0;
-    if (
-      (!hasProposed && !hasReplacements) ||
-      !selectedBoardId ||
-      !weekDates.length
-    )
-      return;
-    setError(null);
-    setAutofillApplying(true);
-    try {
-      const notPast = (d: string) => !isDatePast(d);
-      const additions = [
-        ...(autofillPreview ?? [])
-          .filter((p) => notPast(p.date))
-          .map((p) => ({
-            date: p.date,
-            type: p.type,
-            worker_id: p.worker_id,
-          })),
-        ...replacementEdits
-          .filter((r) => notPast(r.date))
-          .map((r) => ({
-            date: r.date,
-            type: r.type,
-            worker_id: r.to_worker_id,
-          })),
-      ];
-      const removals = replacementEdits
-        .filter((r) => notPast(r.date))
-        .map((r) => ({
-          date: r.date,
-          type: r.type,
-          worker_id: r.from_worker_id,
-        }));
-      const res = await apiFetch<{
-        created: number;
-        removed: number;
-        assignments: Assignment[];
-      }>('/api/assignments/autofill/apply', {
-        method: 'POST',
-        json: {
-          board_id: selectedBoardId,
-          from_date: weekDates[0],
-          to_date: weekDates[6],
-          additions,
-          removals,
-        },
-      });
-      const created = res.assignments ?? [];
-      const removed = res.removed ?? 0;
-      if (created.length > 0 || removed > 0) {
-        updateOverview((prev) => ({
-          ...prev,
-          assignments: [...prev.assignments, ...created],
-        }));
-        void load();
-        const msg =
-          removed > 0
-            ? `הוחלפו ${removed} שיבוצים, נוספו ${created.length}`
-            : `נוספו ${created.length} שיבוצים`;
-        setAutofillSuccess(msg);
-        setTimeout(() => setAutofillSuccess(null), 4000);
-      }
-      setAutofillPreview(null);
-      setReplacementEdits([]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'שגיאה ביישום השיבוץ');
-    } finally {
-      setAutofillApplying(false);
-    }
-  }, [
-    autofillPreview,
-    replacementEdits,
-    selectedBoardId,
-    weekDates,
-    updateOverview,
-    load,
-    setError,
-  ]);
-
-  const handleAutofillCancel = useCallback(() => {
-    setAutofillPreview(null);
-    setEditingProposal(null);
-    setReplacementEdits([]);
-  }, []);
-
-  const handleReplaceProposal = useCallback(
-    (date: string, type: string, oldWorkerId: string, newWorkerId: string) => {
-      const worker = workersById[newWorkerId];
-      const newName =
-        worker?.full_name ?? worker?.email ?? newWorkerId.slice(0, 8);
-
-      const inProposed = autofillPreview?.some(
-        (p) => p.date === date && p.type === type && p.worker_id === oldWorkerId
-      );
-      if (inProposed) {
-        setAutofillPreview((prev) => {
-          if (!prev) return prev;
-          const idx = prev.findIndex(
-            (p) =>
-              p.date === date && p.type === type && p.worker_id === oldWorkerId
-          );
-          if (idx < 0) return prev;
-          const next = [...prev];
-          next[idx] = {
-            ...next[idx]!,
-            worker_id: newWorkerId,
-            worker_name: newName,
-          };
-          return next;
-        });
-      } else {
-        setReplacementEdits((prev) => {
-          const existingIdx = prev.findIndex(
-            (r) =>
-              r.date === date &&
-              r.type === type &&
-              r.to_worker_id === oldWorkerId
-          );
-          if (existingIdx >= 0) {
-            const next = [...prev];
-            next[existingIdx] = {
-              ...next[existingIdx]!,
-              to_worker_id: newWorkerId,
-              to_worker_name: newName,
-            };
-            return next;
-          }
-          return [
-            ...prev,
-            {
-              date,
-              type,
-              from_worker_id: oldWorkerId,
-              to_worker_id: newWorkerId,
-              to_worker_name: newName,
-            },
-          ];
-        });
-      }
-      setEditingProposal(null);
-    },
-    [workersById, autofillPreview]
-  );
 
   if (profile === null || !canManage(profile.role)) {
     return (
@@ -858,130 +470,37 @@ export default function AssignmentsPage() {
         </div>
       )}
 
-      {showCreateBoard && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
-          <form
-            onSubmit={handleCreateBoard}
-            className="my-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <h3 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-              יצירת לוח שיבוצים חדש
-            </h3>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  שם הלוח
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newBoardName}
-                  onChange={(e) => setNewBoardName(e.target.value)}
-                  placeholder="למשל: שגרה, מלחמה"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="singlePerson"
-                  label="אדם יחיד לכל היום"
-                  checked={newBoardSinglePerson}
-                  onChange={(e) => {
-                    setNewBoardSinglePerson(e.target.checked);
-                    if (e.target.checked) setNewBoardWorkersPerShift(1);
-                  }}
-                />
-              </div>
-              {!newBoardSinglePerson && (
-                <div className="space-y-1">
-                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                    כמות כוננים במשמרת
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={newBoardWorkersPerShift}
-                    onChange={(e) =>
-                      setNewBoardWorkersPerShift(
-                        Math.max(1, parseInt(e.target.value, 10) || 1)
-                      )
-                    }
-                    className="w-full cursor-pointer rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 transition outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/40 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateBoard(false);
-                  setNewBoardName('');
-                  setNewBoardWorkersPerShift(1);
-                  setNewBoardSinglePerson(false);
-                }}
-                className="cursor-pointer rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
-              >
-                ביטול
-              </button>
-              <button
-                type="submit"
-                disabled={creatingBoard || !newBoardName.trim()}
-                className="cursor-pointer rounded-xl bg-emerald-500 px-3 py-2 text-sm font-medium text-emerald-950 shadow-sm transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {creatingBoard ? 'יוצר…' : 'צור לוח'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <CreateBoardModal
+        open={showCreateBoard}
+        onClose={() => setShowCreateBoard(false)}
+        onCreated={(board) => {
+          setShowCreateBoard(false);
+          setSelectedBoardId(board.id);
+          updateOverview((prev) => ({
+            ...prev,
+            boards: [...prev.boards, board],
+          }));
+        }}
+      />
 
       {pendingConstraintConfirm && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4">
-          <div className="my-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
-            <h3 className="mb-3 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-              אילוץ בתאריך
-            </h3>
-            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-              ל־{pendingConstraintConfirm.workerName} יש אילוץ באותו יום. אתה
-              בטוח שאתה רוצה לשבץ אותו?
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingConstraintConfirm(null)}
-                disabled={assigningFromConstraintModal}
-                className="cursor-pointer rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                ביטול
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const { shiftId, workerId } = pendingConstraintConfirm;
-                  setAssigningFromConstraintModal(true);
-                  try {
-                    await doAssign(shiftId, workerId);
-                    setPendingConstraintConfirm(null);
-                  } catch (err: unknown) {
-                    console.error(err);
-                    setError(
-                      err instanceof Error
-                        ? err.message
-                        : 'Failed to assign worker'
-                    );
-                  } finally {
-                    setAssigningFromConstraintModal(false);
-                  }
-                }}
-                disabled={assigningFromConstraintModal}
-                className="cursor-pointer rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950 shadow-sm transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {assigningFromConstraintModal ? 'טוען…' : 'כן, לשבץ'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConstraintConfirmModal
+          pending={pendingConstraintConfirm}
+          onConfirm={async (shiftId, workerId) => {
+            try {
+              await doAssign(shiftId, workerId);
+              setPendingConstraintConfirm(null);
+            } catch (err: unknown) {
+              console.error(err);
+              setError(
+                err instanceof Error
+                  ? err.message
+                  : 'Failed to assign worker'
+              );
+            }
+          }}
+          onCancel={() => setPendingConstraintConfirm(null)}
+        />
       )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -1498,573 +1017,54 @@ export default function AssignmentsPage() {
             </table>
           </div>
           {autofillPreview && autofillPreview.length > 0 && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div
-                className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-                dir="rtl"
-              >
-                <div className="shrink-0 border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-                    הצעת שיבוץ אוטומטי – כל השבוע
-                  </h3>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    השיבוץ מוצע לפי אילוצים, עומס וגיוון מהשבוע שעבר. לחץ על כל
-                    כונן להחלפה. כונן יכול להופיע במשמרות שונות בימים שונים.
-                    סימון{' '}
-                    <span className="rounded bg-amber-500/20 px-1 py-0.5 text-amber-700 dark:bg-amber-500/25 dark:text-amber-300">
-                      חדש
-                    </span>{' '}
-                    = שיבוץ מוצע.
-                  </p>
-                </div>
-                <div className="min-h-0 flex-1 overflow-auto p-4">
-                  <table className="w-full min-w-[400px] text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-200 dark:border-zinc-700">
-                        <th className="p-2 text-right text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                          תאריך
-                        </th>
-                        {selectedBoard?.single_person_for_day ? (
-                          <th className="p-2 text-right text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                            כל היום
-                          </th>
-                        ) : (
-                          <>
-                            <th className="p-2 text-right text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                              יום
-                            </th>
-                            <th className="p-2 text-right text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-                              לילה
-                            </th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {weekDates.map((date) => {
-                        const isFullDay =
-                          selectedBoard?.single_person_for_day ?? false;
-                        const shiftDay = getShiftByDateType(
-                          date,
-                          ShiftType.Day
-                        );
-                        const shiftNight = getShiftByDateType(
-                          date,
-                          ShiftType.Night
-                        );
-                        const shiftFullDay = getShiftByDateType(
-                          date,
-                          ShiftType.FullDay
-                        );
-                        const shiftForDay = isFullDay ? shiftFullDay : shiftDay;
-                        const shiftForNight = isFullDay ? null : shiftNight;
-
-                        const getCellAssignments = (
-                          shift: Shift | undefined,
-                          cellType: ShiftType
-                        ) => {
-                          const existing = shift
-                            ? getAssignmentsForShift(shift.id)
-                            : [];
-                          const proposed = autofillPreview.filter(
-                            (p) =>
-                              p.date === date &&
-                              p.type ===
-                                (cellType === ShiftType.FullDay
-                                  ? 'full_day'
-                                  : cellType === ShiftType.Day
-                                    ? 'day'
-                                    : 'night')
-                          );
-                          return { existing, proposed };
-                        };
-
-                        const renderPreviewCell = (
-                          shift: Shift | undefined,
-                          cellType: ShiftType
-                        ) => {
-                          const canEditCell = !isDatePast(date);
-                          const typeStr =
-                            cellType === ShiftType.FullDay
-                              ? 'full_day'
-                              : cellType === ShiftType.Day
-                                ? 'day'
-                                : 'night';
-                          const { existing, proposed } = getCellAssignments(
-                            shift,
-                            cellType
-                          );
-                          const replacedFrom = replacementEdits.filter(
-                            (r) => r.date === date && r.type === typeStr
-                          );
-                          const existingFiltered = existing.filter(
-                            (a) =>
-                              !replacedFrom.some(
-                                (r) => r.from_worker_id === a.worker_id
-                              )
-                          );
-                          const proposedFiltered = proposed.filter(
-                            (p) =>
-                              !replacedFrom.some(
-                                (r) => r.to_worker_id === p.worker_id
-                              )
-                          );
-                          const workerIdsInCell = new Set([
-                            ...existingFiltered.map((a) => a.worker_id),
-                            ...replacedFrom.map((r) => r.to_worker_id),
-                            ...proposedFiltered.map((p) => p.worker_id),
-                          ]);
-                          const availableWorkers = workersSorted.filter(
-                            (w) => !workerIdsInCell.has(w.id)
-                          );
-                          const all = [
-                            ...existingFiltered.map((a) => ({
-                              workerId: a.worker_id,
-                              name: workerDisplayName(workersById[a.worker_id]),
-                              isNew: false,
-                            })),
-                            ...replacedFrom.map((r) => ({
-                              workerId: r.to_worker_id,
-                              name: r.to_worker_name,
-                              isNew: true,
-                            })),
-                            ...proposedFiltered.map((p) => ({
-                              workerId: p.worker_id,
-                              name: p.worker_name,
-                              isNew: true,
-                            })),
-                          ];
-                          if (all.length === 0) {
-                            return (
-                              <span className="text-zinc-400 dark:text-zinc-500">
-                                —
-                              </span>
-                            );
-                          }
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {all.map((item, i) => {
-                                const isEditing =
-                                  canEditCell &&
-                                  editingProposal?.date === date &&
-                                  editingProposal?.type === typeStr &&
-                                  editingProposal?.worker_id === item.workerId;
-
-                                if (isEditing) {
-                                  return (
-                                    <div
-                                      key={i}
-                                      className="inline-flex min-w-[100px]"
-                                    >
-                                      <Dropdown
-                                        placeholder="בחר כונן…"
-                                        value=""
-                                        onSelect={(newId) =>
-                                          handleReplaceProposal(
-                                            date,
-                                            typeStr,
-                                            item.workerId,
-                                            newId
-                                          )
-                                        }
-                                        items={availableWorkers.map((w) => ({
-                                          value: w.id,
-                                          label: workerDisplayName(w),
-                                        }))}
-                                        buttonClassName="min-h-0 rounded-lg border border-amber-500/50 px-2 py-1 text-xs dark:border-amber-500/40"
-                                        panelClassName="max-h-40"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingProposal(null)}
-                                        className="mr-1 rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-600 dark:hover:text-zinc-300"
-                                        title="ביטול"
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  );
-                                }
-
-                                return (
-                                  <span
-                                    key={i}
-                                    {...(canEditCell
-                                      ? {
-                                          role: 'button' as const,
-                                          tabIndex: 0,
-                                          onClick: () =>
-                                            setEditingProposal({
-                                              date,
-                                              type: typeStr,
-                                              worker_id: item.workerId,
-                                            }),
-                                          onKeyDown: (
-                                            e: React.KeyboardEvent
-                                          ) => {
-                                            if (
-                                              e.key === 'Enter' ||
-                                              e.key === ' '
-                                            ) {
-                                              e.preventDefault();
-                                              setEditingProposal({
-                                                date,
-                                                type: typeStr,
-                                                worker_id: item.workerId,
-                                              });
-                                            }
-                                          },
-                                          title: 'לחץ להחלפת כונן',
-                                          className:
-                                            'inline-flex cursor-pointer items-center gap-1 rounded-md bg-amber-500/20 px-1.5 py-0.5 text-xs text-amber-800 transition-colors hover:opacity-90 hover:ring-1 hover:ring-amber-500/40 dark:bg-amber-500/25 dark:text-amber-200 dark:hover:ring-amber-500/30',
-                                        }
-                                      : {
-                                          className:
-                                            'inline-flex cursor-default items-center gap-1 rounded-md bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-200',
-                                        })}
-                                  >
-                                    {item.name}
-                                    {item.isNew && (
-                                      <span className="text-[10px] font-semibold">
-                                        חדש
-                                      </span>
-                                    )}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        };
-
-                        return (
-                          <tr
-                            key={date}
-                            className="border-b border-zinc-100 dark:border-zinc-800"
-                          >
-                            <td className="p-2 font-medium text-zinc-900 dark:text-zinc-100">
-                              {getDayName(date)} {formatDateHe(date)}
-                            </td>
-                            {isFullDay ? (
-                              <td className="p-2 align-top">
-                                {renderPreviewCell(
-                                  shiftForDay,
-                                  ShiftType.FullDay
-                                )}
-                              </td>
-                            ) : (
-                              <>
-                                <td className="p-2 align-top">
-                                  {renderPreviewCell(
-                                    shiftForDay,
-                                    ShiftType.Day
-                                  )}
-                                </td>
-                                <td className="p-2 align-top">
-                                  {renderPreviewCell(
-                                    shiftForNight ?? undefined,
-                                    ShiftType.Night
-                                  )}
-                                </td>
-                              </>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex shrink-0 gap-2 border-t border-zinc-200 p-4 dark:border-zinc-700">
-                  <button
-                    type="button"
-                    onClick={handleAutofillCancel}
-                    disabled={autofillApplying}
-                    className="flex-1 cursor-pointer rounded-xl border border-zinc-300 py-2 text-sm disabled:opacity-50 dark:border-zinc-700"
-                  >
-                    ביטול
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleAutofillConfirm()}
-                    disabled={autofillApplying}
-                    className="flex-1 cursor-pointer rounded-xl bg-emerald-600 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
-                  >
-                    {autofillApplying ? 'מיישם…' : 'אשר שיבוץ'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <AutofillPreviewModal
+              autofillPreview={autofillPreview}
+              selectedBoard={selectedBoard}
+              weekDates={weekDates}
+              getShiftByDateType={getShiftByDateType}
+              getAssignmentsForShift={getAssignmentsForShift}
+              workersById={workersById}
+              workersSorted={workersSorted}
+              replacementEdits={replacementEdits}
+              editingProposal={editingProposal}
+              setEditingProposal={setEditingProposal}
+              handleReplaceProposal={handleReplaceProposal}
+              autofillApplying={autofillApplying}
+              onCancel={handleAutofillCancel}
+              onConfirm={() => void handleAutofillConfirm()}
+            />
           )}
 
           {assigningCell && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="flex w-full max-w-sm flex-col rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div className="mb-2">
-                  <Dropdown
-                    placeholder="בחירת כונן…"
-                    value=""
-                    onSelect={(workerId) => {
-                      if (!workerId) return;
-                      void ensureShiftAndAssign(
-                        assigningCell.date,
-                        assigningCell.type,
-                        workerId
-                      );
-                    }}
-                    items={[
-                      { value: '', label: 'בחירת כונן…' },
-                      ...workersSorted.map((w) => {
-                        const count =
-                          assignmentCountByWorkerThisWeek[w.id] ?? 0;
-                        const suffix =
-                          count > 0 ? ` · ${count} שיבוצים השבוע` : '';
-                        return {
-                          value: w.id,
-                          label: `${workerDisplayName(w)}${suffix}`,
-                        };
-                      }),
-                    ]}
-                  />
-                </div>
-                <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                  שיבוץ ל־{formatDateHe(assigningCell.date)} –{' '}
-                  {assigningCell.type === 'full_day'
-                    ? 'כל היום'
-                    : assigningCell.type === 'day'
-                      ? 'יום'
-                      : 'לילה'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setAssigningCell(null)}
-                  className="w-full cursor-pointer rounded-xl border border-zinc-300 py-2 text-sm dark:border-zinc-700"
-                >
-                  ביטול
-                </button>
-              </div>
-            </div>
+            <AssignWorkerModal
+              assigningCell={assigningCell}
+              workersSorted={workersSorted}
+              assignmentCountByWorkerThisWeek={assignmentCountByWorkerThisWeek}
+              onSelect={(date, type, workerId) =>
+                void ensureShiftAndAssign(date, type, workerId)
+              }
+              onClose={() => setAssigningCell(null)}
+            />
           )}
         </section>
       )}
 
       {viewMode === 'list' && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-            משמרות (יום + לילה)
-          </h2>
-          {shiftsAll.length === 0 ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              אין משמרות מוגדרות.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {shiftsAll.map((shift) => {
-                const shiftAssignments = getAssignmentsForShift(shift.id);
-                const cellType =
-                  shift.type === 'full_day'
-                    ? ShiftType.FullDay
-                    : shift.type === 'day'
-                      ? ShiftType.Day
-                      : ShiftType.Night;
-                return (
-                  <div
-                    key={shift.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      setShiftDrawer({
-                        date: shift.date,
-                        cellType,
-                        shift,
-                        assigns: shiftAssignments,
-                      })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setShiftDrawer({
-                          date: shift.date,
-                          cellType,
-                          shift,
-                          assigns: shiftAssignments,
-                        });
-                      }
-                    }}
-                    className="cursor-pointer space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-zinc-300 hover:bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                          {formatDateHe(shift.date)} ·{' '}
-                          {shift.type === 'full_day'
-                            ? 'כל היום'
-                            : shift.type === 'day'
-                              ? 'יום'
-                              : 'לילה'}
-                        </div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {shiftAssignments.length} כוננים שובצו למשמרת זו
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                          שובצו למשמרת
-                        </div>
-                        {shiftAssignments.length === 0 ? (
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                            עדיין אין כוננים שובצו למשמרת זו.
-                          </p>
-                        ) : (
-                          <ul className="space-y-1 text-xs">
-                            {shiftAssignments.map((a) => {
-                              const worker = workersById[a.worker_id];
-                              const hasConstraint = hasConstraintForShift(
-                                a.worker_id,
-                                shift.date,
-                                shift.type
-                              );
-                              const unavailable = hasUnavailableConstraint(
-                                worker?.user_id ?? null,
-                                shift.date,
-                                shift.type
-                              );
-                              return (
-                                <li
-                                  key={a.id}
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (worker) setWorkerDrawer(worker);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (worker) setWorkerDrawer(worker);
-                                    }
-                                  }}
-                                  className="flex cursor-pointer items-center justify-between rounded-xl bg-zinc-50 px-2 py-1.5 transition-colors duration-200 hover:bg-white/10 dark:bg-zinc-800/80 dark:hover:bg-white/5"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${getWorkerAvatarColor(a.worker_id, worker)}`}
-                                      title={workerDisplayName(worker)}
-                                    >
-                                      {getWorkerInitials(worker)}
-                                    </span>
-                                    <span className="inline-flex flex-wrap items-center gap-1.5 font-medium text-zinc-900 dark:text-zinc-100">
-                                      {workerDisplayName(worker)}
-                                      {(assignmentCountByWorkerThisWeek[
-                                        a.worker_id
-                                      ] ?? 0) > 0 && (
-                                        <span className="text-zinc-500 dark:text-zinc-400">
-                                          •
-                                          {
-                                            assignmentCountByWorkerThisWeek[
-                                              a.worker_id
-                                            ]
-                                          }{' '}
-                                          השבוע
-                                        </span>
-                                      )}
-                                      {hasConstraint && (
-                                        <span
-                                          className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-                                          title="קיים אילוץ בתאריך זה"
-                                        >
-                                          ⚠️ קונפליקט
-                                        </span>
-                                      )}
-                                    </span>
-                                    {worker && !worker.user_id && (
-                                      <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                                        (טרם נרשם)
-                                      </span>
-                                    )}
-                                    {unavailable && (
-                                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-800 uppercase dark:bg-amber-500/20 dark:text-amber-300">
-                                        לא זמין
-                                      </span>
-                                    )}
-                                  </div>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleUnassign(a.id);
-                                    }}
-                                    disabled={unassigningId === a.id}
-                                    className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-red-600 hover:text-red-700 disabled:opacity-50 dark:text-red-400"
-                                  >
-                                    <TrashIcon className="h-3.5 w-3.5" />
-                                    {unassigningId === a.id ? 'מסיר…' : 'הסרה'}
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </div>
-
-                      <div
-                        className="space-y-1"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        role="presentation"
-                      >
-                        <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                          שיבוץ כונן נוסף
-                        </div>
-                        <Dropdown
-                          placeholder="בחירת כונן…"
-                          value=""
-                          onSelect={(workerId) => {
-                            if (!workerId) return;
-                            void handleAssign(shift, workerId);
-                          }}
-                          items={[
-                            { value: '', label: 'בחירת כונן…' },
-                            ...workersSorted.map((w) => {
-                              const unavailable = hasUnavailableConstraint(
-                                w.user_id ?? null,
-                                shift.date,
-                                shift.type
-                              );
-                              const count =
-                                assignmentCountByWorkerThisWeek[w.id] ?? 0;
-                              const suffixParts: string[] = [];
-                              if (!w.user_id) suffixParts.push('טרם נרשם');
-                              if (unavailable) suffixParts.push('לא זמין');
-                              if (count > 0)
-                                suffixParts.push(`${count} שיבוצים השבוע`);
-                              const suffix =
-                                suffixParts.length > 0
-                                  ? ` (${suffixParts.join(' · ')})`
-                                  : '';
-                              return {
-                                value: w.id,
-                                label: `${workerDisplayName(w)}${suffix}`,
-                              };
-                            }),
-                          ]}
-                        />
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                          אם כונן מסומן כלא זמין בתאריך וסוג משמרת זהה, תוצג כאן
-                          אזהרה, אך לא תהיה חסימה של השיבוץ.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          )}
-        </section>
+        <ShiftListView
+          shifts={shiftsAll}
+          workersById={workersById}
+          workersSorted={workersSorted}
+          assignmentCountByWorkerThisWeek={assignmentCountByWorkerThisWeek}
+          constraintsByWorkerDateType={constraintsByWorkerDateType}
+          getAssignmentsForShift={getAssignmentsForShift}
+          hasConstraintForShift={hasConstraintForShift}
+          onUnassign={handleUnassign}
+          onAssign={handleAssign}
+          onOpenShiftDrawer={setShiftDrawer}
+          onOpenWorkerDrawer={setWorkerDrawer}
+          unassigningId={unassigningId}
+          error={error}
+        />
       )}
 
       <ShiftDetailsDrawer

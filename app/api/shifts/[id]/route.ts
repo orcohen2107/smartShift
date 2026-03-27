@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
-import type { Shift, ShiftPatchBody } from '@/lib/utils/interfaces';
+import { parseBody, parseUuidParam } from '@/lib/utils/schemas/parseBody';
+import { shiftPatchSchema } from '@/lib/utils/schemas/shifts';
+import type { Shift } from '@/lib/utils/interfaces';
 
 export async function PATCH(
   req: Request,
@@ -13,11 +15,20 @@ export async function PATCH(
 
   const { supabase } = res;
   const { id } = await params;
-  const body = (await req.json()) as ShiftPatchBody;
+
+  if (!parseUuidParam(id)) {
+    return NextResponse.json({ error: 'Invalid shift id' }, { status: 400 });
+  }
+
+  const parsed = await parseBody(req, shiftPatchSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const update: Record<string, unknown> = {};
   if (body.date !== undefined) update.date = body.date;
   if (body.type !== undefined) update.type = body.type;
+  if (body.required_count !== undefined)
+    update.required_count = body.required_count;
 
   const { data, error } = await supabase
     .from('shifts')
@@ -28,7 +39,7 @@ export async function PATCH(
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? 'Failed to update shift' },
+      { error: 'Failed to update shift' },
       { status: 500 }
     );
   }
@@ -48,11 +59,15 @@ export async function DELETE(
   const { supabase } = res;
   const { id } = await params;
 
+  if (!parseUuidParam(id)) {
+    return NextResponse.json({ error: 'Invalid shift id' }, { status: 400 });
+  }
+
   const { error } = await supabase.from('shifts').delete().eq('id', id);
 
   if (error) {
     return NextResponse.json(
-      { error: error.message ?? 'Failed to delete shift' },
+      { error: 'Failed to delete shift' },
       { status: 500 }
     );
   }

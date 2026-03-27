@@ -11,6 +11,14 @@ alwaysApply: true
 - העדיפו hooks מותאמים אישית (`useX`) ללוגיקה משותפת על פני שכפול קוד.
 - שמרו על שמות ברורים לסוגים ול-interfaces ב-`lib/utils/interfaces/**`.
 
+## Architecture
+
+- כל פיצ'ר חדש יקבל תיקייה ייעודית תחת `features/`.
+- קבצי `page.tsx` צריכים לייצג מסך ולהישאר דקים; state מורכב, orchestration ו-business logic יוצאים ל-`features/**/hooks` ו-`features/**/components`.
+- קבצי `app/api/**/route.ts` צריכים להיות thin routes בלבד: auth, parsing, קריאה ל-service, והחזרת `NextResponse`.
+- אל תשימו business logic בתוך `route.ts`; לוגיקה כזו צריכה לחיות ב-`features/**/server` או בשכבת service ייעודית.
+- `lib/` מיועד ל-infrastructure ותשתיות משותפות בלבד, כמו auth, DB clients, helpers כלליים, ו-utils רוחביים.
+
 ## UI + Tailwind
 
 - לשדות קלט ו-dropdownים השתמשו בגובה סטנדרטי של כ~44px:
@@ -31,4 +39,3 @@ alwaysApply: true
 - ב-routes של Next (`app/api/**/route.ts`) החזירו תמיד `NextResponse.json(...)` עם סטטוסים מדויקים.
 - לוגיקת הרשאות/זיהוי משתמשים דרך helpers קיימים כמו `requireUser`, `requireManager`.
 - טיפול בשגיאה: התחילו מ-500 (שרת) ורק אם ברור שמדובר בשגיאה של המשתמש – 4xx מתאימים.
-

@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth/requireUser';
 import { requireManager } from '@/lib/auth/requireManager';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
-import type { Shift, ShiftPostBody } from '@/lib/utils/interfaces';
+import { assertBoardOwnership } from '@/lib/auth/assertOwnership';
+import { parseBody } from '@/lib/utils/schemas/parseBody';
+import { shiftPostSchema } from '@/lib/utils/schemas/shifts';
+import type { Shift } from '@/lib/utils/interfaces';
 import type { ShiftType } from '@/lib/utils/enums';
 
 export async function GET(req: Request) {
@@ -32,7 +35,10 @@ export async function GET(req: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch shifts' },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ shifts: (data ?? []) as Shift[] });
@@ -44,14 +50,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: res.error }, { status: res.status });
   }
 
-  const { supabase, profile } = res;
-  const body = (await req.json()) as ShiftPostBody;
+  const { profile } = res;
+  const parsed = await parseBody(req, shiftPostSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.date || !body.type) {
-    return NextResponse.json(
-      { error: 'Missing date or type' },
-      { status: 400 }
-    );
+  if (body.board_id) {
+    try {
+      await assertBoardOwnership(body.board_id, profile.system_id);
+    } catch {
+      return NextResponse.json(
+        { error: 'You do not have permission to access this board' },
+        { status: 403 }
+      );
+    }
   }
 
   const insertPayload: Record<string, unknown> = {
@@ -64,7 +76,6 @@ export async function POST(req: Request) {
     insertPayload.board_id = body.board_id;
   }
 
-  // שימוש ב-admin כדי שהמשמרת תישמר ותופיע לכל המנהלים במערכת
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('shifts')
@@ -74,7 +85,7 @@ export async function POST(req: Request) {
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? 'Failed to create shift' },
+      { error: 'Failed to create shift' },
       { status: 500 }
     );
   }

@@ -5,9 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Logo } from '@/components/Logo';
 import { getSupabaseBrowser } from '@/lib/db/supabaseBrowser';
 import { Navbar } from '@/components/Navbar';
-import { AssignmentsProvider } from '@/contexts/AssignmentsContext';
-import { ConstraintsProvider } from '@/contexts/ConstraintsContext';
-import { ProfileProvider, useProfile } from '@/contexts/ProfileContext';
+import { AssignmentsProvider } from '@/features/assignments/contexts/AssignmentsContext';
+import { ConstraintsProvider } from '@/features/constraints/contexts/ConstraintsContext';
+import { ProfileProvider, useProfile } from '@/features/profile/contexts/ProfileContext';
 
 function GuestRedirect({ children }: { children: ReactNode }) {
   const router = useRouter();

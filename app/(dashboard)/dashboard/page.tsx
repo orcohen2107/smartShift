@@ -12,8 +12,8 @@ import {
   CalendarIcon,
   ClipboardDocumentListIcon,
 } from '@heroicons/react/20/solid';
-import { useAssignments } from '@/contexts/AssignmentsContext';
-import { useProfile } from '@/contexts/ProfileContext';
+import { useAssignments } from '@/features/assignments/contexts/AssignmentsContext';
+import { useProfile } from '@/features/profile/contexts/ProfileContext';
 import Dropdown from '@/components/Dropdown';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { type ShiftStatus } from '@/components/dashboard/ShiftBlock';
@@ -216,7 +216,7 @@ export default function DashboardPage() {
     return 'empty';
   }
 
-  if (loading) {
+  if (loading || (!error && !hasCachedData && overview === null)) {
     return (
       <div className="flex min-h-[320px] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
