@@ -19,9 +19,7 @@ export const AVATAR_COLORS = [
   'bg-cyan-500/20 text-cyan-700 dark:bg-cyan-500/25 dark:text-cyan-300',
 ];
 
-export const WORKER_AVATAR_OVERRIDES: Record<string, string> = {
-  'אור כהן': 'bg-red-500/20 text-red-700 dark:bg-red-500/25 dark:text-red-300',
-};
+export const WORKER_AVATAR_OVERRIDES: Record<string, string> = {};
 
 export function getDatesInRange(from: string, to: string): string[] {
   const out: string[] = [];

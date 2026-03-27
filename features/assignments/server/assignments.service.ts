@@ -34,29 +34,27 @@ export async function getAssignmentsOverview(
 
   const admin = getSupabaseAdmin();
 
-  const validBoardIds = await fetchSystemBoardIds(admin, systemId);
+  // Phase 1: boards + workers in parallel (no deps between them)
+  const [boards, allWorkers] = await Promise.all([
+    fetchBoards(admin, systemId),
+    fetchWorkers(admin, systemId),
+  ]);
 
-  const shifts = await fetchShifts(admin, {
-    validBoardIds,
-    type: allTypes ? null : type,
-    boardId: boardId && validBoardIds.includes(boardId) ? boardId : null,
-  });
+  const validBoardIds = boards.map((b) => b.id);
+
+  // Phase 2: shifts + worker sync in parallel
+  const [shifts, allWorkersSynced] = await Promise.all([
+    fetchShifts(admin, {
+      validBoardIds,
+      type: allTypes ? null : type,
+      boardId: boardId && validBoardIds.includes(boardId) ? boardId : null,
+    }),
+    syncAndFilterWorkers(admin, allWorkers, systemId),
+  ]);
 
   const shiftIds = shifts.map((s) => s.id);
-  const rawAssignments = await fetchAssignments(admin, shiftIds);
-
-  const allWorkers = await fetchWorkers(admin, systemId);
-
-  const allWorkersSynced = await syncAndFilterWorkers(
-    admin,
-    allWorkers,
-    systemId
-  );
-
-  const systemWorkerIds = new Set(allWorkersSynced.map((w) => w.id));
-  const assignments = rawAssignments.filter((a) =>
-    systemWorkerIds.has(a.worker_id)
-  );
+  const workerIds = allWorkersSynced.map((w) => w.id);
+  const systemWorkerIds = new Set(workerIds);
 
   const dates = Array.from(new Set(shifts.map((s) => s.date)));
   const typesFilter = allTypes
@@ -65,13 +63,15 @@ export async function getAssignmentsOverview(
       ? [type]
       : ['day', 'night', 'full_day'];
 
-  const constraints = await fetchConstraints(supabase, {
-    dates,
-    typesFilter,
-    workerIds: allWorkersSynced.map((w) => w.id),
-  });
+  // Phase 3: assignments + constraints in parallel
+  const [rawAssignments, constraints] = await Promise.all([
+    fetchAssignments(admin, shiftIds),
+    fetchConstraints(supabase, { dates, typesFilter, workerIds }),
+  ]);
 
-  const boards = await fetchBoards(admin, systemId);
+  const assignments = rawAssignments.filter((a) =>
+    systemWorkerIds.has(a.worker_id)
+  );
 
   return {
     shifts: shifts as Shift[],
@@ -136,24 +136,6 @@ export async function deleteAssignment(
 export { ServiceError } from '@/lib/utils/errors';
 
 // ── internal helpers ──
-
-async function fetchSystemBoardIds(
-  admin: SupabaseClient,
-  systemId: string | null
-): Promise<string[]> {
-  let query = admin
-    .from('shift_boards')
-    .select('id')
-    .order('created_at', { ascending: true });
-  if (systemId) {
-    query = query.eq('system_id', systemId);
-  } else {
-    query = query.is('system_id', null);
-  }
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((b) => b.id);
-}
 
 async function fetchShifts(
   admin: SupabaseClient,
@@ -221,7 +203,7 @@ async function syncAndFilterWorkers(
   allWorkers: Worker[],
   systemId: string | null
 ): Promise<Worker[]> {
-  const profileIdsWithWorker = new Set([
+  const knownIds = new Set([
     ...allWorkers.map((w) => w.id),
     ...(allWorkers.map((w) => w.user_id).filter(Boolean) as string[]),
   ]);
@@ -236,35 +218,36 @@ async function syncAndFilterWorkers(
     profilesQuery = profilesQuery.is('system_id', null);
   }
   const { data: systemProfiles } = await profilesQuery;
-  for (const p of systemProfiles ?? []) {
-    if (profileIdsWithWorker.has(p.id)) continue;
-    const { error: syncErr } = await admin.from('workers').insert({
+
+  const toInsert = (systemProfiles ?? [])
+    .filter((p) => !knownIds.has(p.id))
+    .map((p) => ({
       id: p.id,
       full_name: p.full_name ?? '',
       email: p.email ?? null,
       user_id: p.id,
       system_id: p.system_id ?? null,
       is_reserves: (p as { is_reserves?: boolean }).is_reserves ?? false,
-    });
-    if (!syncErr) {
-      profileIdsWithWorker.add(p.id);
-    }
+    }));
+
+  if (toInsert.length > 0) {
+    await admin.from('workers').upsert(toInsert, { onConflict: 'id' });
   }
 
-  let workersFinalQuery = admin
-    .from('workers')
-    .select('*')
-    .order('full_name', { ascending: true });
-  if (systemId) {
-    workersFinalQuery = workersFinalQuery.eq('system_id', systemId);
+  // Re-fetch only if new workers were synced; otherwise reuse allWorkers
+  let result: Worker[];
+  if (toInsert.length > 0) {
+    let q = admin
+      .from('workers')
+      .select('*')
+      .order('full_name', { ascending: true });
+    q = systemId ? q.eq('system_id', systemId) : q.is('system_id', null);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    result = (data ?? []) as Worker[];
   } else {
-    workersFinalQuery = workersFinalQuery.is('system_id', null);
+    result = allWorkers;
   }
-  const { data: workersFinal, error: workersFinalErr } =
-    await workersFinalQuery;
-  if (workersFinalErr) throw new Error(workersFinalErr.message);
-
-  let result = (workersFinal ?? allWorkers ?? []) as Worker[];
 
   const workerUserIds = result
     .map((w) => w.user_id)

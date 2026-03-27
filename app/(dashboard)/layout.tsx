@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { AssignmentsProvider } from '@/features/assignments/contexts/AssignmentsContext';
 import { ConstraintsProvider } from '@/features/constraints/contexts/ConstraintsContext';
 import { ProfileProvider, useProfile } from '@/features/profile/contexts/ProfileContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function GuestRedirect({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -31,14 +32,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const run = async () => {
       try {
         const supabase = getSupabaseBrowser();
-        const { data } = await supabase.auth.getSession();
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-        if (!data.session) {
+        if (error || !user) {
           router.replace('/login');
           return;
         }
         setChecking(false);
-      } catch {
+      } catch (err) {
+        console.error('[DashboardLayout] auth check failed', err);
         router.replace('/login');
       }
     };
@@ -68,7 +70,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Navbar />
             <GuestRedirect>
               <main className="mx-auto max-w-5xl min-w-0 px-3 py-3 sm:px-4 sm:py-4">
-                {children}
+                <ErrorBoundary>{children}</ErrorBoundary>
               </main>
             </GuestRedirect>
           </div>

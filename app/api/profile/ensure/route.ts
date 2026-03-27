@@ -29,13 +29,14 @@ export async function POST(req: Request) {
       fullName:
         (user.user_metadata?.full_name as string)?.trim() || user.email || '',
       systemId: (user.user_metadata?.system_id as string) || null,
-      userType: (user.user_metadata?.user_type as string) || 'worker',
+      userType: 'worker',
       isReserves:
         user.user_metadata?.user_type === 'worker_reserves' ||
         user.user_metadata?.is_reserves === true,
     });
     return NextResponse.json({ profile });
-  } catch {
+  } catch (err) {
+    console.error('[POST /api/profile/ensure]', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

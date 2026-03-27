@@ -3,14 +3,18 @@ import { requireManager } from '@/lib/auth/requireManager';
 import { getSupabaseAdmin } from '@/lib/db/supabaseAdmin';
 import { parseBody } from '@/lib/utils/schemas/parseBody';
 import { systemPostSchema } from '@/lib/utils/schemas/systems';
+import { rateLimit } from '@/lib/utils/rateLimit';
 import type { System } from '@/lib/utils/interfaces';
 
 /** רשימת מערכות – ציבורי (להרשמה) */
-export async function GET() {
+export async function GET(req: Request) {
+  const limited = await rateLimit(req, { windowMs: 60_000, maxRequests: 20 });
+  if (limited) return limited;
+
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('systems')
-    .select('id, name, created_at')
+    .select('id, name')
     .order('name', { ascending: true });
 
   if (error) {
@@ -20,7 +24,7 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ systems: (data ?? []) as System[] });
+  return NextResponse.json({ systems: (data ?? []).map((s) => ({ id: s.id, name: s.name })) });
 }
 
 /** הוספת מערכת – מנהל בלבד */

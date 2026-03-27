@@ -6,10 +6,14 @@ let adminClient: SupabaseClient | null = null;
 /** לקוח עם הרשאות מלאות – עוקף RLS. לשימוש רק אחרי אימות (requireManager וכו׳) */
 export function getSupabaseAdmin(): SupabaseClient {
   if (!adminClient) {
-    const { url, anonKey } = getSupabaseEnv();
+    const { url } = getSupabaseEnv();
     const serviceKey = getSupabaseServiceRoleKey();
-    const key = serviceKey ?? anonKey;
-    adminClient = createClient(url, key, {
+    if (!serviceKey) {
+      throw new Error(
+        'SUPABASE_SERVICE_ROLE_KEY is required for admin operations'
+      );
+    }
+    adminClient = createClient(url, serviceKey, {
       auth: {
         persistSession: false,
       },

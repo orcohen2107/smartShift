@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireManager } from '@/lib/auth/requireManager';
 import { parseBody, parseUuidParam } from '@/lib/utils/schemas/parseBody';
 import { shiftPatchSchema } from '@/lib/utils/schemas/shifts';
+import { assertShiftOwnership } from '@/lib/auth/assertOwnership';
 import type { Shift } from '@/lib/utils/interfaces';
 
 export async function PATCH(
@@ -23,6 +24,15 @@ export async function PATCH(
   const parsed = await parseBody(req, shiftPatchSchema);
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
+
+  try {
+    await assertShiftOwnership(id, res.profile.system_id);
+  } catch {
+    return NextResponse.json(
+      { error: 'You do not have permission to modify this shift' },
+      { status: 403 }
+    );
+  }
 
   const update: Record<string, unknown> = {};
   if (body.date !== undefined) update.date = body.date;
@@ -61,6 +71,15 @@ export async function DELETE(
 
   if (!parseUuidParam(id)) {
     return NextResponse.json({ error: 'Invalid shift id' }, { status: 400 });
+  }
+
+  try {
+    await assertShiftOwnership(id, res.profile.system_id);
+  } catch {
+    return NextResponse.json(
+      { error: 'You do not have permission to delete this shift' },
+      { status: 403 }
+    );
   }
 
   const { error } = await supabase.from('shifts').delete().eq('id', id);

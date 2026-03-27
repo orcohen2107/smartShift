@@ -216,6 +216,32 @@ export async function applyAutofill(params: {
 
   const admin = getSupabaseAdmin();
 
+  // Verify all worker_ids belong to the manager's system
+  const allWorkerIds = [
+    ...new Set([
+      ...additions.map((a) => a.worker_id),
+      ...removals.map((r) => r.worker_id),
+    ]),
+  ];
+
+  if (allWorkerIds.length > 0) {
+    let workerQuery = admin
+      .from('workers')
+      .select('id')
+      .in('id', allWorkerIds);
+    if (systemId) {
+      workerQuery = workerQuery.eq('system_id', systemId);
+    } else {
+      workerQuery = workerQuery.is('system_id', null);
+    }
+    const { data: validWorkers } = await workerQuery;
+    const validIds = new Set((validWorkers ?? []).map((w) => w.id));
+    const invalidIds = allWorkerIds.filter((id) => !validIds.has(id));
+    if (invalidIds.length > 0) {
+      throw new Error('One or more workers do not belong to your system');
+    }
+  }
+
   const { data: board, error: boardErr } = await admin
     .from('shift_boards')
     .select('workers_per_shift, single_person_for_day')
@@ -245,41 +271,55 @@ export async function applyAutofill(params: {
     ? ['full_day']
     : ['day', 'night'];
 
+  const missingShiftRows: Array<{
+    date: string;
+    type: string;
+    board_id: string;
+    created_by: string;
+    required_count: number;
+  }> = [];
   for (const date of weekDates) {
     for (const type of shiftTypes) {
       const key = `${date}:${type}`;
-      if (shiftByDateType.has(key)) continue;
-
-      const { data: newShift, error: insertErr } = await admin
-        .from('shifts')
-        .insert({
+      if (!shiftByDateType.has(key)) {
+        missingShiftRows.push({
           date,
           type,
           board_id: body.board_id,
           created_by: profileId,
           required_count: workersPerShift,
-        })
-        .select('id')
-        .single();
-
-      if (!insertErr && newShift) {
-        shiftByDateType.set(key, { id: newShift.id });
+        });
       }
     }
   }
 
-  let removedCount = 0;
-  for (const r of removals) {
-    const shift = shiftByDateType.get(`${r.date}:${r.type}`);
-    if (shift) {
-      const { data: deleted } = await admin
-        .from('assignments')
-        .delete()
-        .eq('shift_id', shift.id)
-        .eq('worker_id', r.worker_id)
-        .select('id');
-      removedCount += deleted?.length ?? 0;
+  if (missingShiftRows.length > 0) {
+    const { data: newShifts } = await admin
+      .from('shifts')
+      .insert(missingShiftRows)
+      .select('id, date, type');
+
+    for (const s of newShifts ?? []) {
+      shiftByDateType.set(`${s.date}:${s.type}`, { id: s.id });
     }
+  }
+
+  let removedCount = 0;
+  const removalPairs = removals
+    .map((r) => {
+      const shift = shiftByDateType.get(`${r.date}:${r.type}`);
+      return shift ? { shift_id: shift.id, worker_id: r.worker_id } : null;
+    })
+    .filter(Boolean) as Array<{ shift_id: string; worker_id: string }>;
+
+  for (const pair of removalPairs) {
+    const { data: deleted } = await admin
+      .from('assignments')
+      .delete()
+      .eq('shift_id', pair.shift_id)
+      .eq('worker_id', pair.worker_id)
+      .select('id');
+    removedCount += deleted?.length ?? 0;
   }
 
   const rows: { shift_id: string; worker_id: string }[] = [];

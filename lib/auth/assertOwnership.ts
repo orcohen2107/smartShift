@@ -15,6 +15,10 @@ export async function assertBoardOwnership(
   boardId: string,
   systemId: string | null
 ): Promise<void> {
+  if (!systemId) {
+    throw new ForbiddenError('No system assigned');
+  }
+
   const admin = getSupabaseAdmin();
   const { data: board } = await admin
     .from('shift_boards')
@@ -87,6 +91,10 @@ export async function assertProfileInSystem(
   profileId: string,
   systemId: string | null
 ): Promise<void> {
+  if (!systemId) {
+    throw new ForbiddenError('No system assigned');
+  }
+
   const admin = getSupabaseAdmin();
   const { data: profile } = await admin
     .from('profiles')

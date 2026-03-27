@@ -80,7 +80,7 @@ export async function deleteWorker(params: {
     throw new ServiceError('Not found', 404);
   }
 
-  if (managerSystemId && worker.system_id !== managerSystemId) {
+  if (!managerSystemId || worker.system_id !== managerSystemId) {
     throw new ServiceError('Forbidden', 403);
   }
 
