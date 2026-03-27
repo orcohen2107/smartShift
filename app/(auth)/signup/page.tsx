@@ -35,7 +35,9 @@ export default function SignupPage() {
           setSystemId(list[0]!.id);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setError('שגיאה בטעינת רשימת המערכות');
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch systems once on mount, set default
   }, []);
 

@@ -10,7 +10,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
+  const limited = await rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
   if (limited) return limited;
 
   const res = await requireManager(req);

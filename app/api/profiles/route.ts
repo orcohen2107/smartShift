@@ -11,7 +11,8 @@ export async function GET(req: Request) {
   try {
     const profiles = await listProfiles(res.profile.system_id);
     return NextResponse.json({ profiles });
-  } catch {
+  } catch (err) {
+    console.error('[GET /api/profiles]', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

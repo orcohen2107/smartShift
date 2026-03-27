@@ -6,7 +6,7 @@ import type {
   ConstraintPostBody,
   ConstraintPatchBody,
 } from '@/lib/utils/interfaces';
-import { ConstraintStatus, ShiftType } from '@/lib/utils/enums';
+import { ConstraintStatus, ShiftType, canManage, Role } from '@/lib/utils/enums';
 
 type Profile = {
   id: string;
@@ -46,7 +46,7 @@ export async function getConstraints(params: {
   allParam: string | null;
 }) {
   const { supabase, profile, allParam } = params;
-  const isManager = ['manager', 'admin'].includes(profile.role);
+  const isManager = canManage(profile.role as Role);
   const managerWantsAll = isManager && allParam === '1';
   const systemId = profile.system_id;
 
@@ -155,32 +155,41 @@ async function createRangeConstraints(
     cur.setDate(cur.getDate() + 1);
   }
 
-  const created: Constraint[] = [];
+  const rows: Array<{
+    worker_id: string;
+    date: string;
+    type: ShiftType;
+    status: ConstraintStatus;
+    note: string | null;
+    recurring_group_id: string;
+  }> = [];
   for (const date of dates) {
     const types: ShiftType[] =
       mode === 'both'
         ? [ShiftType.Day, ShiftType.Night]
         : [mode === 'night' ? ShiftType.Night : ShiftType.Day];
     for (const t of types) {
-      const { data, error } = await supabase
-        .from('constraints')
-        .insert({
-          worker_id: profile.id,
-          date,
-          type: t,
-          status,
-          note: body.note ?? null,
-          recurring_group_id: groupId,
-        })
-        .select('*')
-        .single();
-      if (error)
-        throw new Error(error.message ?? 'Failed to create constraint range');
-      created.push(data as Constraint);
+      rows.push({
+        worker_id: profile.id,
+        date,
+        type: t,
+        status,
+        note: body.note ?? null,
+        recurring_group_id: groupId,
+      });
     }
   }
 
-  const withNames = await enrichWithWorkerNames(supabase, created);
+  const { data: created, error } = await supabase
+    .from('constraints')
+    .insert(rows)
+    .select('*');
+
+  if (error) {
+    throw new Error(error.message ?? 'Failed to create constraint range');
+  }
+
+  const withNames = await enrichWithWorkerNames(supabase, (created ?? []) as Constraint[]);
   return { created: withNames };
 }
 
@@ -218,25 +227,25 @@ async function createRecurringConstraints(
     cur.setDate(cur.getDate() + 1);
   }
 
-  const created: Constraint[] = [];
-  for (const date of dates) {
-    const { data, error } = await supabase
-      .from('constraints')
-      .insert({
-        worker_id: profile.id,
-        date,
-        type: body.type,
-        status,
-        note: body.note ?? null,
-        recurring_group_id: groupId,
-      })
-      .select('*')
-      .single();
-    if (error) throw new Error(error.message ?? 'Failed to create constraint');
-    created.push(data as Constraint);
+  const rows = dates.map((date) => ({
+    worker_id: profile.id,
+    date,
+    type: body.type,
+    status,
+    note: body.note ?? null,
+    recurring_group_id: groupId,
+  }));
+
+  const { data: created, error } = await supabase
+    .from('constraints')
+    .insert(rows)
+    .select('*');
+
+  if (error) {
+    throw new Error(error.message ?? 'Failed to create constraint');
   }
 
-  const withNames = await enrichWithWorkerNames(supabase, created);
+  const withNames = await enrichWithWorkerNames(supabase, (created ?? []) as Constraint[]);
   return { created: withNames };
 }
 

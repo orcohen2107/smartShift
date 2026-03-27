@@ -7,7 +7,7 @@ import { autofillApplySchema } from '@/lib/utils/schemas/assignments';
 import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
-  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
+  const limited = await rateLimit(req, { windowMs: 60_000, maxRequests: 10 });
   if (limited) return limited;
 
   const res = await requireManager(req);

@@ -5,7 +5,7 @@ import { signupSchema } from '@/lib/utils/schemas/auth';
 import { rateLimit } from '@/lib/utils/rateLimit';
 
 export async function POST(req: Request) {
-  const limited = rateLimit(req, { windowMs: 60_000, maxRequests: 5 });
+  const limited = await rateLimit(req, { windowMs: 60_000, maxRequests: 5 });
   if (limited) return limited;
 
   const parsed = await parseBody(req, signupSchema);
